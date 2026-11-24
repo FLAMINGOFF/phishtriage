@@ -19,3 +19,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # The stack is fixed at PostgreSQL 16 and Redis 7; only patch/minor updates are
+    # proposed. A major upgrade is a deliberate migration, not a weekly bump.
+    ignore:
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]
+      - dependency-name: redis
+        update-types: ["version-update:semver-major"]
