@@ -10,7 +10,7 @@
 PhishTriage 自动解析、分析、查询威胁情报，用可解释的规则打分，回信告诉上报人结果；
 SOC 分析员在 Web 后台复核、改判定、导出 IOC。
 
-> **状态：** 开发中。已完成 M0（项目骨架）、M1（邮件解析与 IOC 提取）、M2（分析器与打分）。进度见 [PROGRESS.md](PROGRESS.md)。
+> **状态：** 开发中。已完成 M0（项目骨架）、M1（邮件解析与 IOC 提取）、M2（分析器与打分）、M3（队列、worker 与威胁情报）。进度见 [PROGRESS.md](PROGRESS.md)。
 
 ## 演示
 
@@ -75,13 +75,23 @@ flowchart LR
 
 分值写在 `app/scoring/rules.yaml` 里，调分不用改代码。回信永远不说邮件“安全”。
 
+## 威胁情报
+
+worker 在 VirusTotal 上查附件哈希和 URL，在 URLhaus 上查 URL 和主机，用 RDAP 查发件域名的注册时间，
+然后拿这些结果跑规则。API key 是可选的：没配时这些查询记为 `skipped`，其他功能照常。结果缓存在
+Redis 里（VirusTotal 24 小时、URLhaus 1 小时）；VirusTotal 受免费额度约束：所有 worker 共用一个令牌桶
+（任意 60 秒内最多 4 次，测试里用假时钟证明），另有每天 500 次的预算。细节、状态含义和配置项见
+[docs/intel.md](docs/intel.md)（英文）。
+
 ## 安全设计
 
 每封上报邮件都当成攻击者可控的输入。要点如下（完整的 STRIDE 威胁模型见 M6 的
 `docs/threat-model.md`）：
 
 - 服务器从不访问邮件里的链接，也从不渲染邮件的原始 HTML。
-- 附件绝不执行、绝不上传到任何地方，只查询哈希。
+- 附件绝不执行、绝不上传到任何地方，只查询哈希；URL 只查询，不提交扫描。
+- Web 进程从不解析邮件，解析只在 worker 里做。worker 的 HTTP 客户端只能访问写死的情报域名
+  （只走 HTTPS、不跟随跳转），邮件内容没法让它去请求别的地址。
 - 压缩包只读目录、不解压；邮件大小和嵌套层数有严格上限。
 - 密钥只从环境变量读取；策略文件遇到未知字段直接报错。
 - 容器以非特权用户运行，根文件系统只读，去掉所有 Linux capabilities；演示端口只绑定 `127.0.0.1`。
@@ -104,19 +114,23 @@ curl http://localhost:8000/readyz    # 检查数据库和 Redis
 | http://localhost:8000 | PhishTriage Web（M4 起是分析员后台） |
 | http://localhost:8025 | Mailpit：查看 PhishTriage 发出的回信 |
 
-用合成样例邮件试一下解析：
+用合成样例邮件试一下：
 
 - 网页上传：打开 http://localhost:8000/upload ，选择 `tests/fixtures/emails/` 里的任意一封。
-- REST API：在 `.env` 里设置 `API_TOKEN`（至少 32 个字符），重启后运行
+  报告页会等 worker 处理完，然后显示判定、证据和情报结果。
+- REST API：在 `.env` 里设置 `API_TOKEN`（至少 32 个字符），重启后提交并等待判定
+  （脚本会轮询 `GET /api/reports/{id}`，直到 worker 处理完）：
 
   ```bash
-  curl -H "Authorization: Bearer $API_TOKEN" -H "Content-Type: message/rfc822" \
-       --data-binary @tests/fixtures/emails/02_html_link_mismatch_b64.eml \
-       http://localhost:8000/api/reports
+  API_TOKEN=... python3 scripts/submit_report.py \
+      tests/fixtures/emails/02_html_link_mismatch_b64.eml
   ```
 
-- 命令行（不需要启动服务）：`uv run python -m app.cli analyze
+  API 本身返回 `202 Accepted` 和报告 ID，分析在 worker 里异步进行。
+- 命令行（不需要启动服务，也不联网）：`uv run python -m app.cli analyze
   tests/fixtures/emails/06_report_with_attached_original.eml --wrapper` 输出 JSON。
+- 威胁情报：在 `.env` 里填 `VT_API_KEY` 和/或 `URLHAUS_AUTH_KEY`，然后重启 worker
+  （`docker compose up -d worker`）。演示样例只用保留域名，查询结果是“查不到”，这是正常的。
 
 通过邮件发送样例上报的脚本（`scripts/send_sample.py`）在 M5 加入。
 
@@ -125,7 +139,8 @@ curl http://localhost:8000/readyz    # 检查数据库和 Redis
 ```bash
 uv sync                     # 按 uv.lock 安装 Python 3.12 和全部依赖
 uv run pre-commit install   # 每次提交自动跑 ruff、mypy、gitleaks
-uv run pytest               # 测试从不联网
+uv run pytest               # 测试从不联网（respx 会拦住所有请求）
+uv run pytest -m live tests/live   # 可选：真实调用情报接口，需要你自己的 key
 uv run ruff check . && uv run ruff format --check . && uv run mypy app
 uv run python -m app.cli check-config
 uv run python scripts/generate_emails.py           # 重新生成样例邮件
