@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 
 import pytest
 from pydantic import ValidationError
@@ -66,3 +67,39 @@ def test_version_flag(capsys) -> None:
 
 def test_validation_error_type_is_handled() -> None:
     assert issubclass(ValidationError, ValueError)
+
+
+def test_analyze_prints_verdict_and_evidence() -> None:
+    import io
+    from pathlib import Path
+
+    from app.cli import main
+
+    fixtures = Path(__file__).parents[1] / "fixtures" / "emails"
+    buffer = io.StringIO()
+    assert (
+        main(
+            ["analyze", str(fixtures / "06_report_with_attached_original.eml"), "--wrapper"], buffer
+        )
+        == 0
+    )
+    out = json.loads(buffer.getvalue())
+    assert out["mode"] == "attachment"
+    (email,) = out["emails"]
+    assert email["verdict"] == "malicious"
+    rules = {f["rule_id"]: f for f in email["findings"]}
+    assert rules["ATT_EXECUTABLE"]["score"] == 40
+    assert rules["ATT_EXT_MISMATCH"]["evidence"][0]["match"] == "double extension .pdf.exe"
+    assert email["score"] == sum(f["score"] for f in email["findings"])
+
+
+def test_analyze_rejected_file(tmp_path) -> None:
+    import io
+
+    from app.cli import main
+
+    junk = tmp_path / "junk.eml"
+    junk.write_bytes(b"")
+    buffer = io.StringIO()
+    assert main(["analyze", str(junk)], buffer) == 1
+    assert "rejected" in json.loads(buffer.getvalue())

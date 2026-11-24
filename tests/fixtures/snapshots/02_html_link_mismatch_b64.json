@@ -1,6 +1,7 @@
 {
   "emails": [
     {
+      "analysis_errors": {},
       "attachments": [],
       "authentication_results": [
         {
@@ -14,6 +15,99 @@
       ],
       "body_text_chars": 68,
       "defects": [],
+      "findings": [
+        {
+          "analyzer": "auth",
+          "description": "DMARC failed in a trusted Authentication-Results header.",
+          "evidence": [
+            {
+              "field": "Authentication-Results",
+              "match": "dmarc=fail header.from=example.edu",
+              "value": "mx.example.edu; spf=fail smtp.mailfrom=evil.example; dkim=fail header.d=example.edu; dmarc=fail header.from=example.edu"
+            }
+          ],
+          "rule_id": "AUTH_DMARC_FAIL",
+          "score": 30
+        },
+        {
+          "analyzer": "urls",
+          "description": "The email itself contains a form or a password field.",
+          "evidence": [
+            {
+              "field": "HTML body",
+              "match": "form in the email body",
+              "value": "1 form(s), 1 password field(s)"
+            }
+          ],
+          "rule_id": "URL_CREDENTIAL_FORM",
+          "score": 25
+        },
+        {
+          "analyzer": "urls",
+          "description": "A link shows one address but goes to another domain.",
+          "evidence": [
+            {
+              "field": "HTML link",
+              "match": "text shows www[.]example[.]edu, link goes to account-verify[.]evil[.]example",
+              "value": "hxxps://www[.]example[.]edu/account"
+            }
+          ],
+          "rule_id": "URL_TEXT_HREF_MISMATCH",
+          "score": 20
+        },
+        {
+          "analyzer": "content",
+          "description": "The text asks for a password, verification code or similar.",
+          "evidence": [
+            {
+              "field": "HTML body",
+              "match": "Sign in to keep",
+              "value": "ar student, Your mailbox is over quota. Sign in to keep receiving mail: hxxps://www[.]example[.]edu"
+            }
+          ],
+          "rule_id": "CONTENT_CREDENTIAL_REQUEST",
+          "score": 15
+        },
+        {
+          "analyzer": "auth",
+          "description": "DKIM signature failed and no other signature passed.",
+          "evidence": [
+            {
+              "field": "Authentication-Results",
+              "match": "dkim=fail header.d=example.edu",
+              "value": "mx.example.edu; spf=fail smtp.mailfrom=evil.example; dkim=fail header.d=example.edu; dmarc=fail header.from=example.edu"
+            }
+          ],
+          "rule_id": "AUTH_DKIM_FAIL",
+          "score": 10
+        },
+        {
+          "analyzer": "auth",
+          "description": "SPF failed (softfail counts less).",
+          "evidence": [
+            {
+              "field": "Authentication-Results",
+              "match": "spf=fail smtp.mailfrom=evil.example",
+              "value": "mx.example.edu; spf=fail smtp.mailfrom=evil.example; dkim=fail header.d=example.edu; dmarc=fail header.from=example.edu"
+            }
+          ],
+          "rule_id": "AUTH_SPF_FAIL",
+          "score": 10
+        },
+        {
+          "analyzer": "sender",
+          "description": "Replies go to a different domain than the sender's.",
+          "evidence": [
+            {
+              "field": "Reply-To",
+              "match": "domain evil[.]example differs from From domain example[.]edu",
+              "value": "helpdesk[@]evil[.]example"
+            }
+          ],
+          "rule_id": "SENDER_REPLY_TO_MISMATCH",
+          "score": 10
+        }
+      ],
       "forwarded_inline": false,
       "from": {
         "address": "noreply@example.edu",
@@ -85,8 +179,10 @@
         "helpdesk@evil.example"
       ],
       "return_path": "bounce@evil.example",
+      "score": 120,
       "sent_at": "2026-11-24T08:12:40+00:00",
-      "subject": "Mailbox quota exceeded"
+      "subject": "Mailbox quota exceeded",
+      "verdict": "malicious"
     }
   ],
   "mode": "direct"

@@ -1,0 +1,17 @@
+# Expected verdict for every original in every sample email (M2 acceptance criterion).
+# These are an analyst's labels, written down before tuning, not whatever the engine
+# happened to output: if a parser or rule change breaks one, fix the change, not the label.
+01_credential_phish_qp: [malicious]          # look-alike + display-name spoof + password ask
+02_html_link_mismatch_b64: [malicious]       # our domain spoofed (DMARC fail), fake login form
+03_gbk_chinese: [suspicious]                 # Chinese password phish to a bare IP
+04_iso2022jp_newsletter: [no_issues]         # authenticated newsletter
+05_malformed_headers: [no_issues]            # broken but harmless
+06_report_with_attached_original: [malicious]  # invoice.pdf.exe
+07_inline_forward: [suspicious]              # parcel phish, headers lost by inline forward
+08_report_two_originals: [no_issues, suspicious]  # benign notice + HTML payment "advice"
+09_attachments_zoo: [malicious]              # executables, macros, encrypted archive
+10_punycode_ip_shortener: [malicious]        # payroll impersonation from free webmail
+11_benign_internal: [no_issues]
+12_benign_newsletter_html: [no_issues]
+13_report_octet_stream_original: [malicious]  # fixture 01 attached as .eml octet-stream
+14_forged_auth_results: [suspicious]         # forged "all pass" header must not help

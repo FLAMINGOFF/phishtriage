@@ -15,6 +15,7 @@ import argparse
 import base64
 import io
 import quopri
+import struct
 import zipfile
 from email.header import Header
 from pathlib import Path
@@ -171,6 +172,93 @@ def zip_bytes(members: dict[str, bytes], *, encrypt_flag: bool = False) -> bytes
                 start = pos + 4
     return bytes(raw)
 
+
+def ole_file(storages: dict[str, dict[str, bytes]], streams: dict[str, bytes]) -> bytes:
+    """A minimal OLE2 compound file (CFB v3): enough structure for oletools to see a VBA
+    project, and no macro code at all.
+
+    Every stream is padded to 4096 bytes so it lives in regular sectors and the file
+    needs no mini stream. Directory siblings form a degenerate red-black tree (each
+    entry's left sibling is the next smaller name), which readers accept.
+    """
+    sector = 512
+    end, free, fat_sector, no_stream = 0xFFFFFFFE, 0xFFFFFFFF, 0xFFFFFFFD, 0xFFFFFFFF
+
+    def pad(data: bytes) -> bytes:
+        size = max(4096, -(-len(data) // sector) * sector)
+        return data.ljust(size, b"\x00")
+
+    def order(name: str) -> tuple[int, str]:  # CFB sort order: length, then upper case
+        return (len(name), name.upper())
+
+    # Directory entries: (name, type, child, left, start sector, size)
+    entries: list[list] = [["Root Entry", 5, no_stream, no_stream, end, 0]]
+    payloads: list[bytes] = []
+
+    def add_children(parent: int, children: dict[str, object]) -> None:
+        previous = no_stream
+        for name in sorted(children, key=order):
+            value = children[name]
+            index = len(entries)
+            if isinstance(value, bytes):
+                entries.append([name, 2, no_stream, previous, 0, len(pad(value))])
+                payloads.append(pad(value))
+            else:
+                entries.append([name, 1, no_stream, previous, 0, 0])
+                add_children(index, value)  # type: ignore[arg-type]
+            previous = index
+        entries[parent][2] = previous
+
+    add_children(0, {**streams, **storages})
+
+    directory_sectors = -(-len(entries) * 128 // sector)
+    first_data = 1 + directory_sectors
+    fat = [fat_sector] + [i + 1 for i in range(1, directory_sectors)] + [end]
+    next_sector = first_data
+    stream_index = 0
+    for entry in entries:
+        if entry[1] == 2:
+            count = len(payloads[stream_index]) // sector
+            entry[4] = next_sector
+            fat += [next_sector + i + 1 for i in range(count - 1)] + [end]
+            next_sector += count
+            stream_index += 1
+    fat += [free] * (128 - len(fat))
+    assert len(fat) == 128, "fixture too large for one FAT sector"
+
+    header = bytearray(sector)
+    header[0:8] = bytes.fromhex("d0cf11e0a1b11ae1")
+    struct.pack_into("<HHHHH", header, 24, 0x003E, 0x0003, 0xFFFE, 9, 6)
+    struct.pack_into("<IIIIIIIII", header, 40, 0, 1, 1, 0, 4096, end, 0, end, 0)
+    struct.pack_into("<109I", header, 76, 0, *([free] * 108))
+
+    directory = bytearray()
+    for name, kind, child, left, start, size in entries:
+        raw_name = name.encode("utf-16-le")
+        entry = bytearray(128)
+        entry[0 : len(raw_name)] = raw_name
+        struct.pack_into("<HBB", entry, 64, len(raw_name) + 2, kind, 1)
+        struct.pack_into("<III", entry, 68, left, no_stream, child)
+        struct.pack_into("<II", entry, 116, start, size)
+        directory += entry
+    directory = directory.ljust(directory_sectors * sector, b"\x00")
+    unused = bytearray(128)
+    struct.pack_into("<III", unused, 68, no_stream, no_stream, no_stream)
+    for offset in range(len(entries) * 128, len(directory), 128):
+        directory[offset : offset + 128] = unused
+    return bytes(header) + struct.pack("<128I", *fat) + bytes(directory) + b"".join(payloads)
+
+
+# A VBA project skeleton: the storages and streams MS-OVBA requires, with no code.
+VBA_PROJECT_BIN = ole_file(
+    storages={
+        "VBA": {
+            "_VBA_PROJECT": b"\xcc\x61\xff\xff\x00\x00\x00",
+            "dir": b"PhishTriage test fixture: no macro code\x00",
+        }
+    },
+    streams={"PROJECT": b'ID="{00000000-0000-0000-0000-000000000000}"\r\nName="Fixture"\r\n'},
+)
 
 FAKE_PE = b"MZ" + b"\x90\x00" + b"\x00" * 56 + b"This is a harmless PhishTriage test file.\x00"
 FAKE_LNK = (
@@ -370,6 +458,7 @@ def inline_forward() -> str:
         "To: <bob@example.edu>\n\n"
         "Your parcel could not be delivered. Your account will be closed unless you confirm\n"
         "your password and pay the customs fee within 24 hours: https://short.example/p4rc3l\n"
+        "Tracking: http://198.51.100.14/track?id=p4rc3l\n"
     )
     return message(
         [
@@ -442,7 +531,8 @@ def payment_advice_html() -> str:
             boundary,
             [
                 text_part(
-                    "Remittance details are attached. Portal: https://xn--pypal-4ve.example/remit"
+                    "Remittance details are attached. Open the advice and sign in with your"
+                    " email password to view it. Portal: https://xn--pypal-4ve.example/remit"
                 ),
                 file_part("Payment_Advice.html", "text/html", attachment),
             ],
@@ -480,7 +570,13 @@ def attachments_zoo() -> str:
                 file_part(
                     "Report.docm",
                     "application/vnd.ms-word.document.macroEnabled.12",
-                    zip_bytes({"word/document.xml": b"<w:document/>"}),
+                    zip_bytes(
+                        {
+                            "[Content_Types].xml": b"<Types/>",
+                            "word/document.xml": b"<w:document/>",
+                            "word/vbaProject.bin": VBA_PROJECT_BIN,
+                        }
+                    ),
                 ),
                 part(
                     [

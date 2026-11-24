@@ -1,11 +1,14 @@
 {
   "emails": [
     {
+      "analysis_errors": {},
       "attachments": [
         {
           "declared_type": "application/zip",
           "detected_type": "application/zip",
           "filename": "documents.zip",
+          "has_macros": null,
+          "is_encrypted": true,
           "sha256": "1950d6b2380c180930a0ce81cf95e2baa898056dc0fb447d11f80bb011cd805a",
           "size": 372
         },
@@ -13,6 +16,8 @@
           "declared_type": "application/octet-stream",
           "detected_type": "application/x-ms-shortcut",
           "filename": "Scan.lnk",
+          "has_macros": null,
+          "is_encrypted": null,
           "sha256": "bb3d7bc266d062e070e5678fbf32b4bc017bdb6c33f0b8218939f55d07db0334",
           "size": 76
         },
@@ -20,13 +25,17 @@
           "declared_type": "application/vnd.ms-word.document.macroenabled.12",
           "detected_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           "filename": "Report.docm",
-          "sha256": "e52d9cc84f2b70d4c6280fc15356505aee01c48f98c3848479e1ba2916ab19b5",
-          "size": 145
+          "has_macros": true,
+          "is_encrypted": null,
+          "sha256": "0deccd7cc5218e5e7581f218ba02d8a7e2ae105bfd14c0fe6bd24322068c475b",
+          "size": 14717
         },
         {
           "declared_type": "application/octet-stream",
           "detected_type": "application/x-dosexec",
           "filename": "photo‮gpj.exe",
+          "has_macros": null,
+          "is_encrypted": null,
           "sha256": "c28e91631467d932d8a887382eebe18f40acf3778b3f00964fcf3c1696db9ccc",
           "size": 102
         },
@@ -34,6 +43,8 @@
           "declared_type": "application/pdf",
           "detected_type": "application/x-dosexec",
           "filename": "statement.pdf",
+          "has_macros": null,
+          "is_encrypted": null,
           "sha256": "c28e91631467d932d8a887382eebe18f40acf3778b3f00964fcf3c1696db9ccc",
           "size": 102
         }
@@ -50,6 +61,80 @@
       ],
       "body_text_chars": 67,
       "defects": [],
+      "findings": [
+        {
+          "analyzer": "attachments",
+          "description": "An attachment (or a file inside an archive) is a program or shortcut.",
+          "evidence": [
+            {
+              "field": "Archive documents.zip",
+              "match": ".exe file inside",
+              "value": "scan002.exe"
+            },
+            {
+              "field": "Attachment",
+              "match": ".lnk file",
+              "value": "Scan.lnk"
+            },
+            {
+              "field": "Attachment",
+              "match": ".exe file",
+              "value": "photo‮gpj.exe"
+            },
+            {
+              "field": "Attachment",
+              "match": "content is application/x-dosexec",
+              "value": "statement.pdf"
+            }
+          ],
+          "rule_id": "ATT_EXECUTABLE",
+          "score": 40
+        },
+        {
+          "analyzer": "attachments",
+          "description": "An attachment's name hides what it really is.",
+          "evidence": [
+            {
+              "field": "Attachment",
+              "match": "file name contains direction control U+202E",
+              "value": "photo‮gpj.exe"
+            },
+            {
+              "field": "Attachment",
+              "match": ".pdf file is really application/x-dosexec",
+              "value": "statement.pdf"
+            }
+          ],
+          "rule_id": "ATT_EXT_MISMATCH",
+          "score": 30
+        },
+        {
+          "analyzer": "attachments",
+          "description": "An Office document contains VBA macros.",
+          "evidence": [
+            {
+              "field": "Attachment",
+              "match": "contains a VBA project",
+              "value": "Report.docm"
+            }
+          ],
+          "rule_id": "ATT_MACRO",
+          "score": 30
+        },
+        {
+          "analyzer": "attachments",
+          "description": "A password-protected archive, which scanners cannot look into.",
+          "evidence": [
+            {
+              "field": "Attachment",
+              "match": "password-protected: scan001.pdf, scan002.exe",
+              "value": "documents.zip"
+            }
+          ],
+          "rule_id": "ATT_ENCRYPTED_ARCHIVE",
+          "score": 20
+        }
+      ],
       "forwarded_inline": false,
       "from": {
         "address": "scanner@files.example",
@@ -85,9 +170,9 @@
           "value": "bb3d7bc266d062e070e5678fbf32b4bc017bdb6c33f0b8218939f55d07db0334"
         },
         {
-          "defanged": "e52d9cc84f2b70d4c6280fc15356505aee01c48f98c3848479e1ba2916ab19b5",
+          "defanged": "0deccd7cc5218e5e7581f218ba02d8a7e2ae105bfd14c0fe6bd24322068c475b",
           "type": "sha256",
-          "value": "e52d9cc84f2b70d4c6280fc15356505aee01c48f98c3848479e1ba2916ab19b5"
+          "value": "0deccd7cc5218e5e7581f218ba02d8a7e2ae105bfd14c0fe6bd24322068c475b"
         },
         {
           "defanged": "c28e91631467d932d8a887382eebe18f40acf3778b3f00964fcf3c1696db9ccc",
@@ -104,8 +189,10 @@
       ],
       "reply_to": [],
       "return_path": null,
+      "score": 120,
       "sent_at": "2026-11-24T04:09:55+00:00",
-      "subject": "Scanned documents"
+      "subject": "Scanned documents",
+      "verdict": "malicious"
     }
   ],
   "mode": "direct"

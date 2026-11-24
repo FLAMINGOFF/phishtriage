@@ -1,6 +1,7 @@
 {
   "emails": [
     {
+      "analysis_errors": {},
       "attachments": [],
       "authentication_results": [
         {
@@ -14,6 +15,7 @@
       ],
       "body_text_chars": 59,
       "defects": [],
+      "findings": [],
       "forwarded_inline": false,
       "from": {
         "address": "news@example.net",
@@ -58,8 +60,10 @@
       ],
       "reply_to": [],
       "return_path": null,
+      "score": 0,
       "sent_at": "2026-11-24T01:00:00+00:00",
-      "subject": "今月のお知らせ"
+      "subject": "今月のお知らせ",
+      "verdict": "no_issues"
     }
   ],
   "mode": "direct"

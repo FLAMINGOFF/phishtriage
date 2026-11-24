@@ -1,6 +1,7 @@
 {
   "emails": [
     {
+      "analysis_errors": {},
       "attachments": [],
       "authentication_results": [
         {
@@ -14,6 +15,80 @@
       ],
       "body_text_chars": 92,
       "defects": [],
+      "findings": [
+        {
+          "analyzer": "content",
+          "description": "The text asks for a password, verification code or similar.",
+          "evidence": [
+            {
+              "field": "Body",
+              "match": "验证密码",
+              "value": "尊敬的用户： 您的邮箱账户将被停用。请在24小时内点击下面的链接验证密码，否则账户将被冻结。 hxxp://203[.]0[.]113[.]50/verify"
+            }
+          ],
+          "rule_id": "CONTENT_CREDENTIAL_REQUEST",
+          "score": 15
+        },
+        {
+          "analyzer": "urls",
+          "description": "A link points to a bare IP address.",
+          "evidence": [
+            {
+              "field": "URL",
+              "match": "host is an IP address (203.0.113.50)",
+              "value": "hxxp://203[.]0[.]113[.]50/verify/镕"
+            }
+          ],
+          "rule_id": "URL_IP_HOST",
+          "score": 15
+        },
+        {
+          "analyzer": "auth",
+          "description": "SPF failed (softfail counts less).",
+          "evidence": [
+            {
+              "field": "Authentication-Results",
+              "match": "spf=softfail smtp.mailfrom=notice.example",
+              "value": "mx.example.edu; spf=softfail smtp.mailfrom=notice.example; dkim=none header.d=notice.example; dmarc=none header.from=notice.example"
+            }
+          ],
+          "rule_id": "AUTH_SPF_FAIL",
+          "score": 5
+        },
+        {
+          "analyzer": "content",
+          "description": "Urgent or threatening language (counted once).",
+          "evidence": [
+            {
+              "field": "Subject",
+              "match": "紧急",
+              "value": "紧急：您的邮箱即将停用"
+            },
+            {
+              "field": "Subject",
+              "match": "即将停用",
+              "value": "紧急：您的邮箱即将停用"
+            },
+            {
+              "field": "Body",
+              "match": "将被停用",
+              "value": "尊敬的用户： 您的邮箱账户将被停用。请在24小时内点击下面的链接验证密码，否则账户将被冻结。 http://"
+            },
+            {
+              "field": "Body",
+              "match": "24小时内",
+              "value": "尊敬的用户： 您的邮箱账户将被停用。请在24小时内点击下面的链接验证密码，否则账户将被冻结。 hxxp://203[.]0[.]11"
+            },
+            {
+              "field": "Body",
+              "match": "将被冻结",
+              "value": "户： 您的邮箱账户将被停用。请在24小时内点击下面的链接验证密码，否则账户将被冻结。 hxxp://203[.]0[.]113[.]50/verify/镕 邮件系"
+            }
+          ],
+          "rule_id": "CONTENT_URGENCY",
+          "score": 5
+        }
+      ],
       "forwarded_inline": false,
       "from": {
         "address": "admin@notice.example",
@@ -53,8 +128,10 @@
       ],
       "reply_to": [],
       "return_path": null,
+      "score": 40,
       "sent_at": "2026-11-23T23:01:05+08:00",
-      "subject": "紧急：您的邮箱即将停用"
+      "subject": "紧急：您的邮箱即将停用",
+      "verdict": "suspicious"
     }
   ],
   "mode": "direct"

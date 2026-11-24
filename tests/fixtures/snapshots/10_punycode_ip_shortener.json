@@ -1,6 +1,7 @@
 {
   "emails": [
     {
+      "analysis_errors": {},
       "attachments": [],
       "authentication_results": [
         {
@@ -14,6 +15,122 @@
       ],
       "body_text_chars": 249,
       "defects": [],
+      "findings": [
+        {
+          "analyzer": "sender",
+          "description": "The display name claims to be us, but the address is external.",
+          "evidence": [
+            {
+              "field": "From (display name)",
+              "match": "contains 'Payroll Office'",
+              "value": "Payroll Office"
+            },
+            {
+              "field": "From (address)",
+              "match": "external",
+              "value": "payroll.office.2026[@]freemail[.]example"
+            }
+          ],
+          "rule_id": "SENDER_DISPLAY_NAME_SPOOF",
+          "score": 20
+        },
+        {
+          "analyzer": "content",
+          "description": "The text asks for a password, verification code or similar.",
+          "evidence": [
+            {
+              "field": "Body",
+              "match": "confirm your bank details",
+              "value": "Hello, Payroll needs you to confirm your bank details before Friday or your salary payment w"
+            }
+          ],
+          "rule_id": "CONTENT_CREDENTIAL_REQUEST",
+          "score": 15
+        },
+        {
+          "analyzer": "sender",
+          "description": "Claims to be an internal department but writes from free webmail.",
+          "evidence": [
+            {
+              "field": "From (display name)",
+              "match": "claims 'Payroll Office'",
+              "value": "Payroll Office"
+            },
+            {
+              "field": "From (address)",
+              "match": "free webmail (freemail[.]example)",
+              "value": "payroll.office.2026[@]freemail[.]example"
+            }
+          ],
+          "rule_id": "SENDER_FREEMAIL_IMPERSONATION",
+          "score": 15
+        },
+        {
+          "analyzer": "urls",
+          "description": "A link points to a bare IP address.",
+          "evidence": [
+            {
+              "field": "URL",
+              "match": "host is an IP address (3405803786)",
+              "value": "hxxp://3405803786/payroll/form"
+            }
+          ],
+          "rule_id": "URL_IP_HOST",
+          "score": 15
+        },
+        {
+          "analyzer": "sender",
+          "description": "Replies go to a different domain than the sender's.",
+          "evidence": [
+            {
+              "field": "Reply-To",
+              "match": "domain reply[.]test differs from From domain freemail[.]example",
+              "value": "payroll-desk[@]reply[.]test"
+            }
+          ],
+          "rule_id": "SENDER_REPLY_TO_MISMATCH",
+          "score": 10
+        },
+        {
+          "analyzer": "urls",
+          "description": "A link host uses punycode (xn--), often to hide look-alike letters.",
+          "evidence": [
+            {
+              "field": "URL",
+              "match": "punycode host name (xn--)",
+              "value": "hxxp://xn--exmple-4nf[.]example/payroll"
+            }
+          ],
+          "rule_id": "URL_PUNYCODE",
+          "score": 10
+        },
+        {
+          "analyzer": "content",
+          "description": "Urgent or threatening language (counted once).",
+          "evidence": [
+            {
+              "field": "Body",
+              "match": "salary payment will be delayed",
+              "value": "your bank details before Friday or your salary payment will be delayed. Use one of these links: hxxp://exаm"
+            }
+          ],
+          "rule_id": "CONTENT_URGENCY",
+          "score": 5
+        },
+        {
+          "analyzer": "urls",
+          "description": "A link uses a URL shortener that hides the destination.",
+          "evidence": [
+            {
+              "field": "URL",
+              "match": "link shortener",
+              "value": "hxxps://short[.]example/s4l4ry"
+            }
+          ],
+          "rule_id": "URL_SHORTENER",
+          "score": 5
+        }
+      ],
       "forwarded_inline": false,
       "from": {
         "address": "payroll.office.2026@freemail.example",
@@ -90,8 +207,10 @@
         "payroll-desk@reply.test"
       ],
       "return_path": null,
+      "score": 95,
       "sent_at": "2026-11-24T02:59:58+00:00",
-      "subject": "Salary payment on hold"
+      "subject": "Salary payment on hold",
+      "verdict": "malicious"
     }
   ],
   "mode": "direct"

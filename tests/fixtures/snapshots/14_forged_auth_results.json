@@ -1,6 +1,7 @@
 {
   "emails": [
     {
+      "analysis_errors": {},
       "attachments": [],
       "authentication_results": [
         {
@@ -14,6 +15,65 @@
       ],
       "body_text_chars": 96,
       "defects": [],
+      "findings": [
+        {
+          "analyzer": "sender",
+          "description": "The display name claims to be us, but the address is external.",
+          "evidence": [
+            {
+              "field": "From (display name)",
+              "match": "contains 'Example University'",
+              "value": "Example University Helpdesk"
+            },
+            {
+              "field": "From (address)",
+              "match": "external",
+              "value": "helpdesk[@]helpdesk-example[.]test"
+            }
+          ],
+          "rule_id": "SENDER_DISPLAY_NAME_SPOOF",
+          "score": 20
+        },
+        {
+          "analyzer": "content",
+          "description": "The text asks for a password, verification code or similar.",
+          "evidence": [
+            {
+              "field": "Body",
+              "match": "Keep your current password",
+              "value": "Your password expires today. Keep your current password here: hxxps://helpdesk-example[.]test/kee"
+            }
+          ],
+          "rule_id": "CONTENT_CREDENTIAL_REQUEST",
+          "score": 15
+        },
+        {
+          "analyzer": "content",
+          "description": "Urgent or threatening language (counted once).",
+          "evidence": [
+            {
+              "field": "Body",
+              "match": "expires today",
+              "value": "Your password expires today. Keep your current password here: https"
+            }
+          ],
+          "rule_id": "CONTENT_URGENCY",
+          "score": 5
+        },
+        {
+          "analyzer": "auth",
+          "description": "No authentication results from our own mail server (information only).",
+          "evidence": [
+            {
+              "field": "Authentication-Results",
+              "match": "authserv-id not trusted",
+              "value": "mx.evil.example"
+            }
+          ],
+          "rule_id": "AUTH_NO_TRUSTED_RESULTS",
+          "score": 0
+        }
+      ],
       "forwarded_inline": false,
       "from": {
         "address": "helpdesk@helpdesk-example.test",
@@ -53,8 +113,10 @@
       ],
       "reply_to": [],
       "return_path": null,
+      "score": 40,
       "sent_at": "2026-11-24T00:29:55+00:00",
-      "subject": "Password expiry notice"
+      "subject": "Password expiry notice",
+      "verdict": "suspicious"
     }
   ],
   "mode": "direct"

@@ -66,6 +66,13 @@ def test_api_create_and_get(client: TestClient, fixture_bytes: Loader) -> None:
     assert body["intake_mode"] == "attachment"
     assert len(body["related"]) == 1  # two originals attached: one extra report
 
+    child_id = body["related"][0]
+    child = client.get(f"/api/reports/{child_id}", headers=AUTH).json()
+    assert child["verdict"] == "suspicious"
+    assert {f["rule_id"] for f in child["findings"]} >= {"ATT_HTML_FILE", "URL_PUNYCODE"}
+    assert body["verdict"] == "no_issues"
+    assert body["score"] == 0
+
     response = client.get(f"/api/reports/{body['id']}", headers=AUTH)
     assert response.status_code == 200
     assert response.json()["id"] == body["id"]
@@ -136,6 +143,10 @@ def test_upload_flow(client: TestClient, fixture_bytes: Loader) -> None:
     assert page.status_code == 200
     assert "Mailbox quota exceeded" in page.text
     assert "[.]" in page.text  # indicators are shown defanged
+    assert "Malicious" in page.text
+    assert "AUTH_DMARC_FAIL" in page.text
+    assert "DMARC failed in a trusted Authentication-Results header." in page.text
+    assert "https://account-verify" not in page.text  # evidence is defanged too
     assert "<script" not in page.text.split("</head>", 1)[1].replace(
         '<script src="/static/vendor/htmx-2.0.11.min.js" defer></script>', ""
     )

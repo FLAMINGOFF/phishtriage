@@ -60,7 +60,8 @@ Content-Type: multipart/mixed; boundary="mixed-09"
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: quoted-printable
 
-Remittance details are attached. Portal: https://xn--pypal-4ve.example/remit
+Remittance details are attached. Open the advice and sign in with your emai=
+l password to view it. Portal: https://xn--pypal-4ve.example/remit
 --mixed-09
 Content-Type: text/html; name="Payment_Advice.html"
 Content-Disposition: attachment; filename="Payment_Advice.html"
