@@ -1,0 +1,114 @@
+{
+  "emails": [
+    {
+      "attachments": [],
+      "authentication_results": [
+        {
+          "authserv_id": "mx.example.edu",
+          "results": {
+            "dkim": "pass",
+            "dmarc": "pass",
+            "spf": "pass"
+          }
+        }
+      ],
+      "body_text_chars": 81,
+      "defects": [],
+      "forwarded_inline": false,
+      "from": {
+        "address": "library@example.edu",
+        "display_name": "Library",
+        "domain": "example.edu"
+      },
+      "has_html": false,
+      "message_id": "<lib-08@example.edu>",
+      "observables": [],
+      "received": [
+        {
+          "by_host": "mx.example.edu",
+          "from_host": "smtp-int.example.edu",
+          "from_ip": "10.20.0.7"
+        }
+      ],
+      "reply_to": [],
+      "return_path": null,
+      "sent_at": "2026-11-24T06:00:00+00:00",
+      "subject": "Library opening hours over the holidays"
+    },
+    {
+      "attachments": [
+        {
+          "declared_type": "text/html",
+          "detected_type": "text/html",
+          "filename": "Payment_Advice.html",
+          "sha256": "0fcbda30000c17d807942a246b2445307121c3df6d1ef329b42577fbf0f11095",
+          "size": 111
+        }
+      ],
+      "authentication_results": [
+        {
+          "authserv_id": "mx.example.edu",
+          "results": {
+            "dkim": "pass",
+            "dmarc": "pass",
+            "spf": "pass"
+          }
+        }
+      ],
+      "body_text_chars": 76,
+      "defects": [],
+      "forwarded_inline": false,
+      "from": {
+        "address": "payments@vendor.example",
+        "display_name": "Vendor Payments",
+        "domain": "vendor.example"
+      },
+      "has_html": false,
+      "message_id": "<pay-09@vendor.example>",
+      "observables": [
+        {
+          "defanged": "hxxps://xn--pypal-4ve[.]example/remit",
+          "type": "url",
+          "value": "https://xn--pypal-4ve.example/remit"
+        },
+        {
+          "defanged": "xn--pypal-4ve[.]example",
+          "type": "domain",
+          "value": "xn--pypal-4ve.example"
+        },
+        {
+          "defanged": "payments[@]vendor[.]example",
+          "type": "email",
+          "value": "payments@vendor.example"
+        },
+        {
+          "defanged": "vendor[.]example",
+          "type": "domain",
+          "value": "vendor.example"
+        },
+        {
+          "defanged": "198[.]51[.]100[.]99",
+          "type": "ip",
+          "value": "198.51.100.99"
+        },
+        {
+          "defanged": "0fcbda30000c17d807942a246b2445307121c3df6d1ef329b42577fbf0f11095",
+          "type": "sha256",
+          "value": "0fcbda30000c17d807942a246b2445307121c3df6d1ef329b42577fbf0f11095"
+        }
+      ],
+      "received": [
+        {
+          "by_host": "mx.example.edu",
+          "from_host": "out.vendor.example",
+          "from_ip": "198.51.100.99"
+        }
+      ],
+      "reply_to": [],
+      "return_path": null,
+      "sent_at": "2026-11-24T05:44:58+00:00",
+      "subject": "Payment advice"
+    }
+  ],
+  "mode": "attachment"
+}

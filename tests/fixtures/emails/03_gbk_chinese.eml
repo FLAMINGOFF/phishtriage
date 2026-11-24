@@ -1,0 +1,19 @@
+Received: from mail.notice.example (mail.notice.example [203.0.113.50])
+	by mx.example.edu (Postfix) with ESMTPS id 9Cn3
+	for <alice@example.edu>; Mon, 23 Nov 2026 23:01:10 +0800
+Authentication-Results: mx.example.edu;
+	spf=softfail smtp.mailfrom=notice.example;
+	dkim=none header.d=notice.example;
+	dmarc=none header.from=notice.example
+From: =?eucgb2312_cn?b?08q8/s+1zbO53MDt1LE=?= <admin@notice.example>
+To: alice@example.edu
+Subject: =?eucgb2312_cn?b?vfS8saO6xPq1xNPKz+S8tL2rzaPTww==?=
+Date: Mon, 23 Nov 2026 23:01:05 +0800
+Message-ID: <gbk-03@notice.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="gb2312"
+Content-Transfer-Encoding: base64
+
+1/C+tLXE08O7p6O6DQoNCsT6tcTTys/k1cu7p72rsbvNo9PDoaPH69TaMjTQocqxxNq147v3z8LD
+5rXEwbS909Hp1qTD3MLro6y38dTy1cu7p72rsbu2s73hoaMNCg0KaHR0cDovLzIwMy4wLjExMy41
+MC92ZXJpZnkv6UYNCg0K08q8/s+1zbO53MDt1LENCg==

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import tomllib
 from pathlib import Path
 
@@ -10,7 +11,7 @@ from alembic import command
 from alembic.config import Config
 from fakeredis import FakeRedis
 from rq.serializers import JSONSerializer
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 
 from app import __version__, worker
 from app.config import EXAMPLE_SETTINGS_FILE, SETTINGS_FILE_ENV
@@ -55,7 +56,31 @@ def test_alembic_upgrade_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     cfg = Config(str(ROOT / "alembic.ini"))
     command.upgrade(cfg, "head")
     tables = inspect(make_engine(f"sqlite:///{db}")).get_table_names()
-    assert "alembic_version" in tables
+    assert {"alembic_version", "reports", "emails", "attachments", "observables"} <= set(tables)
+    command.check(cfg)  # the models and the migrations describe the same schema
+    command.downgrade(cfg, "base")
+    assert inspect(make_engine(f"sqlite:///{db}")).get_table_names() == ["alembic_version"]
+
+
+@pytest.mark.skipif(not os.environ.get("TEST_DATABASE_URL"), reason="needs PostgreSQL")
+def test_alembic_round_trip_on_postgres(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from app.db.models import Base
+
+    url = os.environ["TEST_DATABASE_URL"]
+    engine = make_engine(url)
+    Base.metadata.drop_all(engine)  # tables left by the ORM tests
+    with engine.begin() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
+    monkeypatch.setenv("DATABASE_URL", url)
+    monkeypatch.setenv(SETTINGS_FILE_ENV, str(EXAMPLE_SETTINGS_FILE))
+    monkeypatch.chdir(tmp_path)
+    cfg = Config(str(ROOT / "alembic.ini"))
+    command.upgrade(cfg, "head")
+    try:
+        command.check(cfg)
+    finally:
+        command.downgrade(cfg, "base")
+        engine.dispose()
 
 
 def test_version_matches_pyproject() -> None:

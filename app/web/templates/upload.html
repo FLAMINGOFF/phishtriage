@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Upload · PhishTriage{% endblock %}
+{% block content %}
+<h1>Upload a suspicious email</h1>
+<p>Upload the <code>.eml</code> file of the suspicious message itself, or a report that
+carries it as an attachment. Maximum 25 MB. Nothing in it is opened, rendered or followed.</p>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="/upload" enctype="multipart/form-data">
+  <input type="file" name="file" accept=".eml,message/rfc822" required>
+  <button type="submit">Analyse</button>
+</form>
+{% endblock %}

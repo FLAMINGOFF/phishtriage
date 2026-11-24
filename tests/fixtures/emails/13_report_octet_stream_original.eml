@@ -1,0 +1,43 @@
+Received: from smtp-int.example.edu (smtp-int.example.edu [10.20.0.5])
+	by mx.example.edu (Postfix) with ESMTPS id R13A
+	for <report-phishing@example.edu>; Tue, 24 Nov 2026 10:15:02 +0000
+Authentication-Results: mx.example.edu; spf=pass smtp.mailfrom=example.edu; dkim=pass header.d=example.edu; dmarc=pass header.from=example.edu
+From: Bob Reporter <bob@example.edu>
+To: report-phishing@example.edu
+Subject: Fwd: is this phishing?
+Date: Tue, 24 Nov 2026 10:15:00 +0000
+Message-ID: <report-13@example.edu>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="report-13"
+
+--report-13
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Hi, this looks odd to me. - Bob
+--report-13
+Content-Type: application/octet-stream; name="message-1.eml"
+Content-Disposition: attachment; filename="message-1.eml"
+Content-Transfer-Encoding: base64
+
+UmVjZWl2ZWQ6IGZyb20gbWFpbC5leGFtcDFlLmV4YW1wbGUgKG1haWwuZXhhbXAxZS5leGFtcGxl
+IFsyMDMuMC4xMTMuMTBdKQ0KCWJ5IG14LmV4YW1wbGUuZWR1IChQb3N0Zml4KSB3aXRoIEVTTVRQ
+UyBpZCA0WHExDQoJZm9yIDxhbGljZUBleGFtcGxlLmVkdT47IFR1ZSwgMjQgTm92IDIwMjYgMDk6
+NTg6MDEgKzAwMDANClJlY2VpdmVkOiBmcm9tIFsxOTIuMC4yLjQ0XSAoWzE5Mi4wLjIuNDRdIFsx
+OTIuMC4yLjQ0XSkNCglieSBtYWlsLmV4YW1wMWUuZXhhbXBsZSAoUG9zdGZpeCkgd2l0aCBFU01U
+UFMgaWQgMWEyYg0KCWZvciA8YWxpY2VAZXhhbXBsZS5lZHU+OyBUdWUsIDI0IE5vdiAyMDI2IDA5
+OjU3OjU4ICswMDAwDQpBdXRoZW50aWNhdGlvbi1SZXN1bHRzOiBteC5leGFtcGxlLmVkdTsNCglz
+cGY9ZmFpbCBzbXRwLm1haWxmcm9tPWV4YW1wMWUuZXhhbXBsZTsNCglka2ltPW5vbmUgaGVhZGVy
+LmQ9ZXhhbXAxZS5leGFtcGxlOw0KCWRtYXJjPW5vbmUgaGVhZGVyLmZyb209ZXhhbXAxZS5leGFt
+cGxlDQpGcm9tOiBJVCBTZXJ2aWNlIERlc2sgPGl0LXN1cHBvcnRAZXhhbXAxZS5leGFtcGxlPg0K
+VG86IEFsaWNlIDxhbGljZUBleGFtcGxlLmVkdT4NClN1YmplY3Q6IEFjdGlvbiByZXF1aXJlZDog
+dmVyaWZ5IHlvdXIgYWNjb3VudA0KRGF0ZTogVHVlLCAyNCBOb3YgMjAyNiAwOTo1Nzo1NSArMDAw
+MA0KTWVzc2FnZS1JRDogPGNyZWQtMDFAZXhhbXAxZS5leGFtcGxlPg0KTUlNRS1WZXJzaW9uOiAx
+LjANCkNvbnRlbnQtVHlwZTogdGV4dC9wbGFpbjsgY2hhcnNldD0idXRmLTgiDQpDb250ZW50LVRy
+YW5zZmVyLUVuY29kaW5nOiBxdW90ZWQtcHJpbnRhYmxlDQoNCkRlYXIgdXNlciwNCg0KV2UgZGV0
+ZWN0ZWQgdW51c3VhbCBzaWduLWluIGFjdGl2aXR5IG9uIHlvdXIgRXhhbXBsZSBVbml2ZXJzaXR5
+IGFjY291bnQuDQpZb3VyIGFjY291bnQgd2lsbCBiZSBzdXNwZW5kZWQgd2l0aGluIDI0IGhvdXJz
+IHVubGVzcyB5b3UgdmVyaWZ5IHlvdXIgcGFzc3c9DQpvcmQNCmF0IHRoZSBzZWN1cmUgcG9ydGFs
+IGJlbG93Og0KDQpodHRwczovL2V4YW1wMWUuZXhhbXBsZS9zc28vbG9naW4/dXNlcj0zRGFsaWNl
+DQoNClRoYW5rIHlvdSwNCklUIFNlcnZpY2UgRGVzaw0K
+--report-13--

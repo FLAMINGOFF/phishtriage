@@ -1,0 +1,10 @@
+Received: garbage without structure
+From: "Unclosed Quote <weird@example.com
+To: undisclosed-recipients:;
+Subject: =?utf-8?B?not-valid-base64!!?= hello
+Subject: duplicate subject header
+Date: Someday, 99 Foo 20XX 25:61:00
+Content-Type: text/plain; charset="x-made-up-charset"
+This line has no colon, so the parser ends the headers here
+
+Body with an unknown charset: café

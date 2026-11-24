@@ -1,0 +1,112 @@
+{
+  "emails": [
+    {
+      "attachments": [
+        {
+          "declared_type": "application/zip",
+          "detected_type": "application/zip",
+          "filename": "documents.zip",
+          "sha256": "1950d6b2380c180930a0ce81cf95e2baa898056dc0fb447d11f80bb011cd805a",
+          "size": 372
+        },
+        {
+          "declared_type": "application/octet-stream",
+          "detected_type": "application/x-ms-shortcut",
+          "filename": "Scan.lnk",
+          "sha256": "bb3d7bc266d062e070e5678fbf32b4bc017bdb6c33f0b8218939f55d07db0334",
+          "size": 76
+        },
+        {
+          "declared_type": "application/vnd.ms-word.document.macroenabled.12",
+          "detected_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "filename": "Report.docm",
+          "sha256": "e52d9cc84f2b70d4c6280fc15356505aee01c48f98c3848479e1ba2916ab19b5",
+          "size": 145
+        },
+        {
+          "declared_type": "application/octet-stream",
+          "detected_type": "application/x-dosexec",
+          "filename": "photo‮gpj.exe",
+          "sha256": "c28e91631467d932d8a887382eebe18f40acf3778b3f00964fcf3c1696db9ccc",
+          "size": 102
+        },
+        {
+          "declared_type": "application/pdf",
+          "detected_type": "application/x-dosexec",
+          "filename": "statement.pdf",
+          "sha256": "c28e91631467d932d8a887382eebe18f40acf3778b3f00964fcf3c1696db9ccc",
+          "size": 102
+        }
+      ],
+      "authentication_results": [
+        {
+          "authserv_id": "mx.example.edu",
+          "results": {
+            "dkim": "none",
+            "dmarc": "none",
+            "spf": "pass"
+          }
+        }
+      ],
+      "body_text_chars": 67,
+      "defects": [],
+      "forwarded_inline": false,
+      "from": {
+        "address": "scanner@files.example",
+        "display_name": "Scanner",
+        "domain": "files.example"
+      },
+      "has_html": false,
+      "message_id": "<zoo-10@files.example>",
+      "observables": [
+        {
+          "defanged": "scanner[@]files[.]example",
+          "type": "email",
+          "value": "scanner@files.example"
+        },
+        {
+          "defanged": "files[.]example",
+          "type": "domain",
+          "value": "files.example"
+        },
+        {
+          "defanged": "203[.]0[.]113[.]120",
+          "type": "ip",
+          "value": "203.0.113.120"
+        },
+        {
+          "defanged": "1950d6b2380c180930a0ce81cf95e2baa898056dc0fb447d11f80bb011cd805a",
+          "type": "sha256",
+          "value": "1950d6b2380c180930a0ce81cf95e2baa898056dc0fb447d11f80bb011cd805a"
+        },
+        {
+          "defanged": "bb3d7bc266d062e070e5678fbf32b4bc017bdb6c33f0b8218939f55d07db0334",
+          "type": "sha256",
+          "value": "bb3d7bc266d062e070e5678fbf32b4bc017bdb6c33f0b8218939f55d07db0334"
+        },
+        {
+          "defanged": "e52d9cc84f2b70d4c6280fc15356505aee01c48f98c3848479e1ba2916ab19b5",
+          "type": "sha256",
+          "value": "e52d9cc84f2b70d4c6280fc15356505aee01c48f98c3848479e1ba2916ab19b5"
+        },
+        {
+          "defanged": "c28e91631467d932d8a887382eebe18f40acf3778b3f00964fcf3c1696db9ccc",
+          "type": "sha256",
+          "value": "c28e91631467d932d8a887382eebe18f40acf3778b3f00964fcf3c1696db9ccc"
+        }
+      ],
+      "received": [
+        {
+          "by_host": "mx.example.edu",
+          "from_host": "mx1.files.example",
+          "from_ip": "203.0.113.120"
+        }
+      ],
+      "reply_to": [],
+      "return_path": null,
+      "sent_at": "2026-11-24T04:09:55+00:00",
+      "subject": "Scanned documents"
+    }
+  ],
+  "mode": "direct"
+}

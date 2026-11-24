@@ -1,0 +1,93 @@
+{
+  "emails": [
+    {
+      "attachments": [],
+      "authentication_results": [
+        {
+          "authserv_id": "mx.example.edu",
+          "results": {
+            "dkim": "fail",
+            "dmarc": "fail",
+            "spf": "fail"
+          }
+        }
+      ],
+      "body_text_chars": 68,
+      "defects": [],
+      "forwarded_inline": false,
+      "from": {
+        "address": "noreply@example.edu",
+        "display_name": "Example University",
+        "domain": "example.edu"
+      },
+      "has_html": true,
+      "message_id": "<quota-02@evil.example>",
+      "observables": [
+        {
+          "defanged": "hxxps://account-verify[.]evil[.]example/owa/login",
+          "type": "url",
+          "value": "https://account-verify.evil.example/owa/login"
+        },
+        {
+          "defanged": "account-verify[.]evil[.]example",
+          "type": "domain",
+          "value": "account-verify.evil.example"
+        },
+        {
+          "defanged": "hxxps://collect[.]evil[.]example/post",
+          "type": "url",
+          "value": "https://collect.evil.example/post"
+        },
+        {
+          "defanged": "collect[.]evil[.]example",
+          "type": "domain",
+          "value": "collect.evil.example"
+        },
+        {
+          "defanged": "hxxps://track[.]evil[.]example/open.gif?id=42",
+          "type": "url",
+          "value": "https://track.evil.example/open.gif?id=42"
+        },
+        {
+          "defanged": "track[.]evil[.]example",
+          "type": "domain",
+          "value": "track.evil.example"
+        },
+        {
+          "defanged": "helpdesk[@]evil[.]example",
+          "type": "email",
+          "value": "helpdesk@evil.example"
+        },
+        {
+          "defanged": "evil[.]example",
+          "type": "domain",
+          "value": "evil.example"
+        },
+        {
+          "defanged": "bounce[@]evil[.]example",
+          "type": "email",
+          "value": "bounce@evil.example"
+        },
+        {
+          "defanged": "198[.]51[.]100[.]23",
+          "type": "ip",
+          "value": "198.51.100.23"
+        }
+      ],
+      "received": [
+        {
+          "by_host": "mx.example.edu",
+          "from_host": "smtp.evil.example",
+          "from_ip": "198.51.100.23"
+        }
+      ],
+      "reply_to": [
+        "helpdesk@evil.example"
+      ],
+      "return_path": "bounce@evil.example",
+      "sent_at": "2026-11-24T08:12:40+00:00",
+      "subject": "Mailbox quota exceeded"
+    }
+  ],
+  "mode": "direct"
+}

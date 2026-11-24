@@ -1,0 +1,76 @@
+{
+  "emails": [
+    {
+      "attachments": [],
+      "authentication_results": [
+        {
+          "authserv_id": "mx.example.edu",
+          "results": {
+            "dkim": "pass",
+            "dmarc": "pass",
+            "spf": "pass"
+          }
+        }
+      ],
+      "body_text_chars": 77,
+      "defects": [],
+      "forwarded_inline": false,
+      "from": {
+        "address": "digest@example.org",
+        "display_name": "Research Digest",
+        "domain": "example.org"
+      },
+      "has_html": true,
+      "message_id": "<digest-12@example.org>",
+      "observables": [
+        {
+          "defanged": "hxxp://www[.]example[.]org",
+          "type": "url",
+          "value": "http://www.example.org"
+        },
+        {
+          "defanged": "www[.]example[.]org",
+          "type": "domain",
+          "value": "www.example.org"
+        },
+        {
+          "defanged": "hxxps://www[.]example[.]org/news/november",
+          "type": "url",
+          "value": "https://www.example.org/news/november"
+        },
+        {
+          "defanged": "hxxps://www[.]example[.]org/unsubscribe?u=abc",
+          "type": "url",
+          "value": "https://www.example.org/unsubscribe?u=abc"
+        },
+        {
+          "defanged": "digest[@]example[.]org",
+          "type": "email",
+          "value": "digest@example.org"
+        },
+        {
+          "defanged": "example[.]org",
+          "type": "domain",
+          "value": "example.org"
+        },
+        {
+          "defanged": "198[.]51[.]100[.]40",
+          "type": "ip",
+          "value": "198.51.100.40"
+        }
+      ],
+      "received": [
+        {
+          "by_host": "mx.example.edu",
+          "from_host": "mail.example.org",
+          "from_ip": "198.51.100.40"
+        }
+      ],
+      "reply_to": [],
+      "return_path": null,
+      "sent_at": "2026-11-24T01:59:59+00:00",
+      "subject": "November research digest"
+    }
+  ],
+  "mode": "direct"
+}

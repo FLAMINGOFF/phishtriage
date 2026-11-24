@@ -1,0 +1,61 @@
+{
+  "emails": [
+    {
+      "attachments": [],
+      "authentication_results": [
+        {
+          "authserv_id": "mx.example.edu",
+          "results": {
+            "dkim": "none",
+            "dmarc": "none",
+            "spf": "softfail"
+          }
+        }
+      ],
+      "body_text_chars": 92,
+      "defects": [],
+      "forwarded_inline": false,
+      "from": {
+        "address": "admin@notice.example",
+        "display_name": "邮件系统管理员",
+        "domain": "notice.example"
+      },
+      "has_html": false,
+      "message_id": "<gbk-03@notice.example>",
+      "observables": [
+        {
+          "defanged": "hxxp://203[.]0[.]113[.]50/verify/镕",
+          "type": "url",
+          "value": "http://203.0.113.50/verify/镕"
+        },
+        {
+          "defanged": "203[.]0[.]113[.]50",
+          "type": "ip",
+          "value": "203.0.113.50"
+        },
+        {
+          "defanged": "admin[@]notice[.]example",
+          "type": "email",
+          "value": "admin@notice.example"
+        },
+        {
+          "defanged": "notice[.]example",
+          "type": "domain",
+          "value": "notice.example"
+        }
+      ],
+      "received": [
+        {
+          "by_host": "mx.example.edu",
+          "from_host": "mail.notice.example",
+          "from_ip": "203.0.113.50"
+        }
+      ],
+      "reply_to": [],
+      "return_path": null,
+      "sent_at": "2026-11-23T23:01:05+08:00",
+      "subject": "紧急：您的邮箱即将停用"
+    }
+  ],
+  "mode": "direct"
+}

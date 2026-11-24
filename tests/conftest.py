@@ -43,3 +43,77 @@ def make_settings(example_policy: Policy) -> Callable[..., Settings]:
         return Settings(_env_file=None, **overrides)
 
     return factory
+
+
+# --------------------------------------------------------------------------- database
+
+
+@pytest.fixture
+def session_factory():
+    """A fresh schema per test: SQLite in memory by default, PostgreSQL when
+    TEST_DATABASE_URL is set (CI runs both)."""
+    import os
+
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+
+    from app.db.models import Base
+    from app.db.session import make_engine
+
+    url = os.environ.get("TEST_DATABASE_URL")
+    if url:
+        engine = make_engine(url)
+        Base.metadata.drop_all(engine)
+    else:
+        engine = create_engine(
+            "sqlite+pysqlite://",
+            poolclass=StaticPool,
+            connect_args={"check_same_thread": False},
+        )
+
+        @event.listens_for(engine, "connect")
+        def _foreign_keys(dbapi_connection, _record):  # pragma: no cover - trivial
+            dbapi_connection.execute("PRAGMA foreign_keys=ON")
+
+    Base.metadata.create_all(engine)
+    yield sessionmaker(bind=engine, expire_on_commit=False)
+    Base.metadata.drop_all(engine)
+    engine.dispose()
+
+
+@pytest.fixture
+def store(tmp_path):
+    from app.storage import BlobStore
+
+    return BlobStore(tmp_path / "storage")
+
+
+@pytest.fixture
+def fixture_bytes():
+    from pathlib import Path
+
+    root = Path(__file__).parent / "fixtures" / "emails"
+
+    def load(name: str) -> bytes:
+        matches = sorted(root.glob(f"{name}*.eml"))
+        assert matches, f"no fixture {name}"
+        return matches[0].read_bytes()
+
+    return load
+
+
+@pytest.fixture
+def app_factory(make_settings, session_factory, store):
+    """Build the FastAPI app against the test database and blob store."""
+    from app.main import create_app
+
+    def factory(**settings):
+        return create_app(
+            make_settings(**settings),
+            probes={},
+            session_factory=session_factory,
+            store=store,
+        )
+
+    return factory

@@ -1,0 +1,40 @@
+{
+  "emails": [
+    {
+      "attachments": [],
+      "authentication_results": [
+        {
+          "authserv_id": "mx.example.edu",
+          "results": {
+            "dkim": "pass",
+            "dmarc": "pass",
+            "spf": "pass"
+          }
+        }
+      ],
+      "body_text_chars": 81,
+      "defects": [],
+      "forwarded_inline": false,
+      "from": {
+        "address": "library@example.edu",
+        "display_name": "Library",
+        "domain": "example.edu"
+      },
+      "has_html": false,
+      "message_id": "<lib-08@example.edu>",
+      "observables": [],
+      "received": [
+        {
+          "by_host": "mx.example.edu",
+          "from_host": "smtp-int.example.edu",
+          "from_ip": "10.20.0.7"
+        }
+      ],
+      "reply_to": [],
+      "return_path": null,
+      "sent_at": "2026-11-24T06:00:00+00:00",
+      "subject": "Library opening hours over the holidays"
+    }
+  ],
+  "mode": "direct"
+}

@@ -1,0 +1,51 @@
+Received: from smtp-int.example.edu (smtp-int.example.edu [10.20.0.5])
+	by mx.example.edu (Postfix) with ESMTPS id R6A
+	for <report-phishing@example.edu>; Tue, 24 Nov 2026 10:15:02 +0000
+Authentication-Results: mx.example.edu; spf=pass smtp.mailfrom=example.edu; dkim=pass header.d=example.edu; dmarc=pass header.from=example.edu
+From: Bob Reporter <bob@example.edu>
+To: report-phishing@example.edu
+Subject: Fwd: is this phishing?
+Date: Tue, 24 Nov 2026 10:15:00 +0000
+Message-ID: <report-6@example.edu>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="report-6"
+
+--report-6
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Hi, this looks odd to me. - Bob
+--report-6
+Content-Type: message/rfc822; name="Suspicious message 1.eml"
+Content-Disposition: attachment; filename="Suspicious message 1.eml"
+
+Received: from relay.billing.example (relay.billing.example [203.0.113.77])
+	by mx.example.edu (Postfix) with ESMTPS id 5Inv
+	for <alice@example.edu>; Tue, 24 Nov 2026 07:30:00 +0000
+Authentication-Results: mx.example.edu;
+	spf=pass smtp.mailfrom=billing.example;
+	dkim=none header.d=billing.example;
+	dmarc=none header.from=billing.example
+From: Accounts Payable <ap@billing.example>
+To: alice@example.edu
+Subject: Overdue invoice #20261124
+Date: Tue, 24 Nov 2026 07:29:55 +0000
+Message-ID: <inv-06@billing.example>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="mixed-06"
+
+--mixed-06
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Please find the overdue invoice attached. Payment is due today.
+--mixed-06
+Content-Type: application/octet-stream; name="invoice.pdf.exe"
+Content-Disposition: attachment; filename="invoice.pdf.exe"
+Content-Transfer-Encoding: base64
+
+TVqQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAVGhpcyBpcyBhIGhhcm1sZXNzIFBoaXNoVHJpYWdlIHRlc3QgZmlsZS4A
+--mixed-06--
+
+--report-6--

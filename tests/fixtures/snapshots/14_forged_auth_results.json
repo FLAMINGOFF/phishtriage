@@ -1,0 +1,61 @@
+{
+  "emails": [
+    {
+      "attachments": [],
+      "authentication_results": [
+        {
+          "authserv_id": "mx.evil.example",
+          "results": {
+            "dkim": "pass",
+            "dmarc": "pass",
+            "spf": "pass"
+          }
+        }
+      ],
+      "body_text_chars": 96,
+      "defects": [],
+      "forwarded_inline": false,
+      "from": {
+        "address": "helpdesk@helpdesk-example.test",
+        "display_name": "Example University Helpdesk",
+        "domain": "helpdesk-example.test"
+      },
+      "has_html": false,
+      "message_id": "<frg-13@relay.evil.example>",
+      "observables": [
+        {
+          "defanged": "hxxps://helpdesk-example[.]test/keep",
+          "type": "url",
+          "value": "https://helpdesk-example.test/keep"
+        },
+        {
+          "defanged": "helpdesk-example[.]test",
+          "type": "domain",
+          "value": "helpdesk-example.test"
+        },
+        {
+          "defanged": "helpdesk[@]helpdesk-example[.]test",
+          "type": "email",
+          "value": "helpdesk@helpdesk-example.test"
+        },
+        {
+          "defanged": "203[.]0[.]113[.]66",
+          "type": "ip",
+          "value": "203.0.113.66"
+        }
+      ],
+      "received": [
+        {
+          "by_host": "mx.example.edu",
+          "from_host": "relay.evil.example",
+          "from_ip": "203.0.113.66"
+        }
+      ],
+      "reply_to": [],
+      "return_path": null,
+      "sent_at": "2026-11-24T00:29:55+00:00",
+      "subject": "Password expiry notice"
+    }
+  ],
+  "mode": "direct"
+}
