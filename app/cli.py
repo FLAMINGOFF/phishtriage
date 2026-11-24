@@ -1,25 +1,30 @@
 """Command line: ``python -m app.cli <command>``.
 
-Commands so far:
+Commands:
 
+* ``analyze FILE.eml``: parse a message offline (no database, no network) and print
+  the result as JSON. ``--wrapper`` treats it as a report from the report mailbox.
 * ``check-config``: validate settings and policy and print a summary with secrets masked.
   Handy as ``docker compose run --rm web python -m app.cli check-config``.
-
-``analyze`` (M1) and ``create-user`` (M4) follow.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections.abc import Sequence
-from typing import TextIO
+from pathlib import Path
+from typing import Any, TextIO
 from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import ValidationError
 
 from app import __version__
-from app.config import ConfigError, Settings, get_settings
+from app.config import ConfigError, Policy, Settings, get_settings
+from app.parsing.eml import MessageRejected, ParsedEmail, extract_originals
+from app.parsing.filetype import detect_type
+from app.parsing.iocs import extract_observables
 
 
 def redact_url(url: str) -> str:
@@ -66,10 +71,81 @@ def cmd_check_config(_args: argparse.Namespace, out: TextIO) -> int:
     return 0
 
 
+def summarize_email(parsed: ParsedEmail, policy: Policy) -> dict[str, Any]:
+    """JSON-friendly view of one parsed email: what an analyst wants to see first."""
+    return {
+        "message_id": parsed.message_id,
+        "subject": parsed.subject,
+        "from": parsed.from_addr.model_dump() if parsed.from_addr else None,
+        "reply_to": [a.address for a in parsed.reply_to],
+        "return_path": parsed.return_path,
+        "sent_at": parsed.sent_at.isoformat() if parsed.sent_at else None,
+        "forwarded_inline": parsed.forwarded_inline,
+        "received": [
+            {"from_host": h.from_host, "from_ip": h.from_ip, "by_host": h.by_host}
+            for h in parsed.received
+        ],
+        "authentication_results": [
+            {"authserv_id": a.authserv_id, "results": {r.method: r.result for r in a.results}}
+            for a in parsed.authentication_results
+        ],
+        "body_text_chars": len(parsed.body_text),
+        "has_html": parsed.body_html is not None,
+        "attachments": [
+            {
+                "filename": a.filename,
+                "declared_type": a.declared_type,
+                "detected_type": detect_type(a.content),
+                "size": a.size,
+                "sha256": a.sha256,
+            }
+            for a in parsed.attachments
+        ],
+        "observables": [
+            o.model_dump() for o in extract_observables(parsed, own_domains=policy.org_domains)
+        ],
+        "defects": parsed.defects,
+    }
+
+
+def analyze_file(raw: bytes, policy: Policy, *, wrapper: bool) -> dict[str, Any]:
+    intake = extract_originals(raw, is_report_wrapper=wrapper)
+    return {
+        "mode": intake.mode,
+        "emails": [summarize_email(original, policy) for original in intake.originals],
+    }
+
+
+def cmd_analyze(args: argparse.Namespace, out: TextIO) -> int:
+    try:
+        policy = get_settings().policy
+    except (ConfigError, ValidationError) as exc:
+        print(f"configuration error: {exc}", file=sys.stderr)
+        return 2
+    try:
+        raw = Path(args.file).read_bytes()
+    except OSError as exc:
+        print(f"cannot read {args.file}: {exc.strerror}", file=sys.stderr)
+        return 2
+    try:
+        result = analyze_file(raw, policy, wrapper=args.wrapper)
+    except MessageRejected as exc:
+        print(json.dumps({"rejected": exc.reason}), file=out)
+        return 1
+    print(json.dumps(result, indent=2, ensure_ascii=False), file=out)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m app.cli", description="PhishTriage CLI")
     parser.add_argument("--version", action="version", version=f"PhishTriage {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
+    analyze = sub.add_parser("analyze", help="parse an .eml file offline and print JSON")
+    analyze.add_argument("file", help="path to the .eml file")
+    analyze.add_argument(
+        "--wrapper", action="store_true", help="treat it as a report from the report mailbox"
+    )
+    analyze.set_defaults(handler=cmd_analyze)
     check = sub.add_parser("check-config", help="validate configuration and print a summary")
     check.set_defaults(handler=cmd_check_config)
     return parser

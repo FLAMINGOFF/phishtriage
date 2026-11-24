@@ -10,13 +10,19 @@ requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.20.1",
     "fastapi>=0.165.0",
+    "idna>=3.20",
+    "jinja2>=3.1.6",
+    "nh3>=0.3.8",
     "psycopg[binary]>=3.3.9",
     "pydantic>=2.14.4",
     "pydantic-settings>=2.16.3",
+    "python-magic>=0.4.27",
+    "python-multipart>=0.0.34",
     "pyyaml>=6.0.4",
     "redis>=8.2.0",
     "rq>=3.0.0",
     "sqlalchemy>=2.1.9",
+    "tldextract>=5.4.0",
     "uvicorn>=0.54.0",
 ]
 
@@ -58,10 +64,11 @@ select = [
     "RET",      # return statements
     "RUF",
 ]
+ignore = ["N818"]  # "MessageRejected" reads better than "MessageRejectedError"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106", "S108"]  # asserts and fake secrets/paths are fine in tests
-"scripts/**" = ["S101"]
+"scripts/**" = ["S101", "RUF001"]  # sample texts use full-width CJK punctuation
 
 # --------------------------------------------------------------------------- mypy
 [tool.mypy]
