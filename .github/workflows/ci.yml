@@ -126,7 +126,7 @@ jobs:
             -H "Authorization: Bearer ${API_TOKEN}" -H "Content-Type: message/rfc822" \
             --data-binary @tests/fixtures/emails/02_html_link_mismatch_b64.eml \
             http://127.0.0.1:8000/api/reports
-          python3 -c "import json; r = json.load(open('report.json')); print(r['id'], r['status']); assert r['status'] in ('queued', 'done'), r"
+          python3 -c "import json; r = json.load(open('report.json')); print(r['id'], r['status'], r['verdict']); assert r['status'] == 'done' and r['verdict'] == 'malicious', r"
       - name: Show state on failure
         if: failure()
         run: |
