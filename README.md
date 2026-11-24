@@ -12,7 +12,7 @@ with explainable rules, replies to the reporter with a verdict, and gives SOC an
 console to review, re-classify and export IOCs.
 
 > **Status:** under active development. Done: M0 (skeleton), M1 (parsing and IOC
-> extraction). See [PROGRESS.md](PROGRESS.md).
+> extraction), M2 (analyzers and scoring). See [PROGRESS.md](PROGRESS.md).
 
 ## Demo
 
@@ -69,9 +69,19 @@ flowchart LR
 
 ## How scoring works
 
-_Documented in M2 (`docs/scoring.md`)._ In short: each rule has a fixed ID, points and
-evidence; the total maps to *Malicious* (≥ 70 or any threat-intel hit), *Suspicious*
-(40–69), *Low risk* (15–39) or *No issues found* (< 15). Replies never call an email "safe".
+Five analyzers raise rules with fixed IDs; each rule has points and evidence (the field
+examined, its value and what matched). Points are added up, once per rule, and the total
+maps to a verdict. Full rule table and details: [docs/scoring.md](docs/scoring.md).
+
+| Verdict | Condition | Example rules |
+| --- | --- | --- |
+| Malicious | ≥ 70, or any `*_INTEL_MALICIOUS` | `ATT_EXECUTABLE` 40, `SENDER_LOOKALIKE_DOMAIN` 30 |
+| Suspicious | 40–69 | `AUTH_DMARC_FAIL` 30, `URL_CREDENTIAL_FORM` 25 |
+| Low risk | 15–39 | `URL_IP_HOST` 15, `CONTENT_CREDENTIAL_REQUEST` 15 |
+| No issues found | < 15 | `URL_SHORTENER` 5, `CONTENT_URGENCY` 5 |
+
+Points live in `app/scoring/rules.yaml`, so tuning never needs a code change. Replies never
+call an email "safe".
 
 ## Security design
 

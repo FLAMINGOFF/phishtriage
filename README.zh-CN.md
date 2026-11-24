@@ -10,7 +10,7 @@
 PhishTriage 自动解析、分析、查询威胁情报，用可解释的规则打分，回信告诉上报人结果；
 SOC 分析员在 Web 后台复核、改判定、导出 IOC。
 
-> **状态：** 开发中。已完成 M0（项目骨架）、M1（邮件解析与 IOC 提取）。进度见 [PROGRESS.md](PROGRESS.md)。
+> **状态：** 开发中。已完成 M0（项目骨架）、M1（邮件解析与 IOC 提取）、M2（分析器与打分）。进度见 [PROGRESS.md](PROGRESS.md)。
 
 ## 演示
 
@@ -63,9 +63,17 @@ flowchart LR
 
 ## 打分规则
 
-_M2 完成后详见 `docs/scoring.md`。_ 简单说：每条规则有固定的 ID、分值和证据；总分对应
-*恶意*（≥ 70 或命中任一威胁情报）、*可疑*（40–69）、*低风险*（15–39）、*未发现问题*（< 15）。
-回信永远不说邮件“安全”。
+五个分析器按固定的规则 ID 报告命中；每条规则有分值和证据（检查了哪个字段、原值、匹配到什么）。
+每条规则每封邮件最多计一次，分数相加后映射成判定。完整规则表和细节见 [docs/scoring.md](docs/scoring.md)（英文）。
+
+| 判定 | 条件 | 规则举例 |
+| --- | --- | --- |
+| 恶意 | ≥ 70，或命中任一 `*_INTEL_MALICIOUS` | `ATT_EXECUTABLE` 40、`SENDER_LOOKALIKE_DOMAIN` 30 |
+| 可疑 | 40–69 | `AUTH_DMARC_FAIL` 30、`URL_CREDENTIAL_FORM` 25 |
+| 低风险 | 15–39 | `URL_IP_HOST` 15、`CONTENT_CREDENTIAL_REQUEST` 15 |
+| 未发现问题 | < 15 | `URL_SHORTENER` 5、`CONTENT_URGENCY` 5 |
+
+分值写在 `app/scoring/rules.yaml` 里，调分不用改代码。回信永远不说邮件“安全”。
 
 ## 安全设计
 
