@@ -136,6 +136,11 @@ class Report(Base):
     children: Mapped[list[Report]] = relationship(
         cascade="all, delete-orphan", passive_deletes=True
     )
+    findings: Mapped[list[Finding]] = relationship(
+        back_populates="report",
+        cascade="all, delete-orphan",
+        order_by="(Finding.score.desc(), Finding.rule_id)",
+    )
 
     @property
     def final_verdict(self) -> Verdict | None:
@@ -210,3 +215,22 @@ class Observable(Base):
     defanged: Mapped[str] = mapped_column(String(4096))
 
     report: Mapped[Report] = relationship(back_populates="observables")
+
+
+class Finding(Base):
+    """A scoring rule that matched, with its points and evidence (see app/scoring)."""
+
+    __tablename__ = "findings"
+    __table_args__ = (UniqueConstraint("report_id", "rule_id"),)  # once per email
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    report_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("reports.id", ondelete="CASCADE"), index=True
+    )
+    rule_id: Mapped[str] = mapped_column(String(64), index=True)
+    analyzer: Mapped[str] = mapped_column(String(16))
+    score: Mapped[int] = mapped_column(Integer)
+    # [{"field": ..., "value": ..., "match": ...}, ...]; indicator values are defanged.
+    evidence: Mapped[list[Any]] = mapped_column(JSONType, default=list)
+
+    report: Mapped[Report] = relationship(back_populates="findings")

@@ -1,0 +1,115 @@
+# PhishTriage scoring rules.
+#
+# Each rule has a fixed ID (used in code, findings, exports and the audit log), the
+# analyzer that raises it, its points and a one-line description shown to analysts and
+# reporters. Change points here, not in code; the engine refuses unknown keys, unknown
+# analyzers and rules the code does not know. Initial values from the project plan; M6
+# re-tunes them from the evaluation set.
+version: 1
+
+thresholds:          # total score -> verdict (the top band also covers "forces_verdict")
+  malicious: 70
+  suspicious: 40
+  low_risk: 15       # below this: "no issues found" (never "safe")
+
+rules:
+  AUTH_DMARC_FAIL:
+    analyzer: auth
+    score: 30
+    description: DMARC failed in a trusted Authentication-Results header.
+  AUTH_SPF_FAIL:
+    analyzer: auth
+    score: 10
+    variants:
+      softfail: 5
+    description: SPF failed (softfail counts less).
+  AUTH_DKIM_FAIL:
+    analyzer: auth
+    score: 10
+    description: DKIM signature failed and no other signature passed.
+  AUTH_NO_TRUSTED_RESULTS:
+    analyzer: auth
+    score: 0
+    description: No authentication results from our own mail server (information only).
+
+  SENDER_LOOKALIKE_DOMAIN:
+    analyzer: sender
+    score: 30
+    description: The sender's domain imitates one of our domains.
+  SENDER_DISPLAY_NAME_SPOOF:
+    analyzer: sender
+    score: 20
+    description: The display name claims to be us, but the address is external.
+  SENDER_FREEMAIL_IMPERSONATION:
+    analyzer: sender
+    score: 15
+    description: Claims to be an internal department but writes from free webmail.
+  SENDER_NEW_DOMAIN:
+    analyzer: sender
+    score: 15
+    description: The sender's domain was registered less than 30 days ago.
+  SENDER_REPLY_TO_MISMATCH:
+    analyzer: sender
+    score: 10
+    description: Replies go to a different domain than the sender's.
+
+  URL_INTEL_MALICIOUS:
+    analyzer: urls
+    score: 50
+    forces_verdict: malicious
+    description: Threat intelligence knows a link as malicious.
+  URL_CREDENTIAL_FORM:
+    analyzer: urls
+    score: 25
+    description: The email itself contains a form or a password field.
+  URL_TEXT_HREF_MISMATCH:
+    analyzer: urls
+    score: 20
+    description: A link shows one address but goes to another domain.
+  URL_IP_HOST:
+    analyzer: urls
+    score: 15
+    description: A link points to a bare IP address.
+  URL_PUNYCODE:
+    analyzer: urls
+    score: 10
+    description: A link host uses punycode (xn--), often to hide look-alike letters.
+  URL_SHORTENER:
+    analyzer: urls
+    score: 5
+    description: A link uses a URL shortener that hides the destination.
+
+  ATT_INTEL_MALICIOUS:
+    analyzer: attachments
+    score: 60
+    forces_verdict: malicious
+    description: Threat intelligence knows an attachment as malicious.
+  ATT_EXECUTABLE:
+    analyzer: attachments
+    score: 40
+    description: An attachment (or a file inside an archive) is a program or shortcut.
+  ATT_EXT_MISMATCH:
+    analyzer: attachments
+    score: 30
+    description: An attachment's name hides what it really is.
+  ATT_MACRO:
+    analyzer: attachments
+    score: 30
+    description: An Office document contains VBA macros.
+  ATT_HTML_FILE:
+    analyzer: attachments
+    score: 20
+    description: An HTML or SVG attachment, a common way to deliver a fake login page.
+  ATT_ENCRYPTED_ARCHIVE:
+    analyzer: attachments
+    score: 20
+    description: A password-protected archive, which scanners cannot look into.
+
+  CONTENT_CREDENTIAL_REQUEST:
+    analyzer: content
+    score: 15
+    description: The text asks for a password, verification code or similar.
+  CONTENT_URGENCY:
+    analyzer: content
+    score: 5
+    description: Urgent or threatening language (counted once).

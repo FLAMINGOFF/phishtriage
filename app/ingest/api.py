@@ -52,6 +52,13 @@ class ObservableOut(BaseModel):
     defanged: str
 
 
+class FindingOut(BaseModel):
+    rule_id: str
+    analyzer: str
+    score: int
+    evidence: list[dict[str, str]]
+
+
 class ReportOut(BaseModel):
     id: uuid.UUID
     parent_id: uuid.UUID | None
@@ -67,6 +74,7 @@ class ReportOut(BaseModel):
     subject: str | None
     from_addr: str | None
     forwarded_inline: bool | None
+    findings: list[FindingOut]
     observables: list[ObservableOut]
     related: list[uuid.UUID]
 
@@ -88,6 +96,12 @@ class ReportOut(BaseModel):
             subject=email.subject if email else None,
             from_addr=email.from_addr if email else None,
             forwarded_inline=email.forwarded_inline if email else None,
+            findings=[
+                FindingOut(
+                    rule_id=f.rule_id, analyzer=f.analyzer, score=f.score, evidence=f.evidence
+                )
+                for f in report.findings
+            ],
             observables=[
                 ObservableOut(type=o.type.value, value=o.value, defanged=o.defanged)
                 for o in report.observables

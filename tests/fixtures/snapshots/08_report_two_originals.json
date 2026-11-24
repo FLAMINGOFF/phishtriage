@@ -1,6 +1,7 @@
 {
   "emails": [
     {
+      "analysis_errors": {},
       "attachments": [],
       "authentication_results": [
         {
@@ -14,6 +15,7 @@
       ],
       "body_text_chars": 81,
       "defects": [],
+      "findings": [],
       "forwarded_inline": false,
       "from": {
         "address": "library@example.edu",
@@ -32,15 +34,20 @@
       ],
       "reply_to": [],
       "return_path": null,
+      "score": 0,
       "sent_at": "2026-11-24T06:00:00+00:00",
-      "subject": "Library opening hours over the holidays"
+      "subject": "Library opening hours over the holidays",
+      "verdict": "no_issues"
     },
     {
+      "analysis_errors": {},
       "attachments": [
         {
           "declared_type": "text/html",
           "detected_type": "text/html",
           "filename": "Payment_Advice.html",
+          "has_macros": null,
+          "is_encrypted": null,
           "sha256": "0fcbda30000c17d807942a246b2445307121c3df6d1ef329b42577fbf0f11095",
           "size": 111
         }
@@ -55,8 +62,49 @@
           }
         }
       ],
-      "body_text_chars": 76,
+      "body_text_chars": 141,
       "defects": [],
+      "findings": [
+        {
+          "analyzer": "attachments",
+          "description": "An HTML or SVG attachment, a common way to deliver a fake login page.",
+          "evidence": [
+            {
+              "field": "Attachment",
+              "match": "HTML/SVG file (text/html)",
+              "value": "Payment_Advice.html"
+            }
+          ],
+          "rule_id": "ATT_HTML_FILE",
+          "score": 20
+        },
+        {
+          "analyzer": "content",
+          "description": "The text asks for a password, verification code or similar.",
+          "evidence": [
+            {
+              "field": "Body",
+              "match": "sign in with your email password",
+              "value": "tails are attached. Open the advice and sign in with your email password to view it. Portal: hxxps://xn--pypal-4"
+            }
+          ],
+          "rule_id": "CONTENT_CREDENTIAL_REQUEST",
+          "score": 15
+        },
+        {
+          "analyzer": "urls",
+          "description": "A link host uses punycode (xn--), often to hide look-alike letters.",
+          "evidence": [
+            {
+              "field": "URL",
+              "match": "punycode host name (xn--)",
+              "value": "hxxps://xn--pypal-4ve[.]example/remit"
+            }
+          ],
+          "rule_id": "URL_PUNYCODE",
+          "score": 10
+        }
+      ],
       "forwarded_inline": false,
       "from": {
         "address": "payments@vendor.example",
@@ -106,8 +154,10 @@
       ],
       "reply_to": [],
       "return_path": null,
+      "score": 45,
       "sent_at": "2026-11-24T05:44:58+00:00",
-      "subject": "Payment advice"
+      "subject": "Payment advice",
+      "verdict": "suspicious"
     }
   ],
   "mode": "attachment"

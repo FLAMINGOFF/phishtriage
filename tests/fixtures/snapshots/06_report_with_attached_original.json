@@ -1,11 +1,14 @@
 {
   "emails": [
     {
+      "analysis_errors": {},
       "attachments": [
         {
           "declared_type": "application/octet-stream",
           "detected_type": "application/x-dosexec",
           "filename": "invoice.pdf.exe",
+          "has_macros": null,
+          "is_encrypted": null,
           "sha256": "c28e91631467d932d8a887382eebe18f40acf3778b3f00964fcf3c1696db9ccc",
           "size": 102
         }
@@ -22,6 +25,47 @@
       ],
       "body_text_chars": 63,
       "defects": [],
+      "findings": [
+        {
+          "analyzer": "attachments",
+          "description": "An attachment (or a file inside an archive) is a program or shortcut.",
+          "evidence": [
+            {
+              "field": "Attachment",
+              "match": ".exe file",
+              "value": "invoice.pdf.exe"
+            }
+          ],
+          "rule_id": "ATT_EXECUTABLE",
+          "score": 40
+        },
+        {
+          "analyzer": "attachments",
+          "description": "An attachment's name hides what it really is.",
+          "evidence": [
+            {
+              "field": "Attachment",
+              "match": "double extension .pdf.exe",
+              "value": "invoice.pdf.exe"
+            }
+          ],
+          "rule_id": "ATT_EXT_MISMATCH",
+          "score": 30
+        },
+        {
+          "analyzer": "content",
+          "description": "Urgent or threatening language (counted once).",
+          "evidence": [
+            {
+              "field": "Body",
+              "match": "due today",
+              "value": "he overdue invoice attached. Payment is due today."
+            }
+          ],
+          "rule_id": "CONTENT_URGENCY",
+          "score": 5
+        }
+      ],
       "forwarded_inline": false,
       "from": {
         "address": "ap@billing.example",
@@ -61,8 +105,10 @@
       ],
       "reply_to": [],
       "return_path": null,
+      "score": 75,
       "sent_at": "2026-11-24T07:29:55+00:00",
-      "subject": "Overdue invoice #20261124"
+      "subject": "Overdue invoice #20261124",
+      "verdict": "malicious"
     }
   ],
   "mode": "attachment"

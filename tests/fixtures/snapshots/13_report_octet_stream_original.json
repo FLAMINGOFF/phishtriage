@@ -1,6 +1,7 @@
 {
   "emails": [
     {
+      "analysis_errors": {},
       "attachments": [],
       "authentication_results": [
         {
@@ -14,6 +15,93 @@
       ],
       "body_text_chars": 274,
       "defects": [],
+      "findings": [
+        {
+          "analyzer": "sender",
+          "description": "The sender's domain imitates one of our domains.",
+          "evidence": [
+            {
+              "field": "From",
+              "match": "name 'examp1e' is 1 edit(s) from 'example'",
+              "value": "it-support[@]examp1e[.]example"
+            }
+          ],
+          "rule_id": "SENDER_LOOKALIKE_DOMAIN",
+          "score": 30
+        },
+        {
+          "analyzer": "sender",
+          "description": "The display name claims to be us, but the address is external.",
+          "evidence": [
+            {
+              "field": "From (display name)",
+              "match": "contains 'IT Service Desk'",
+              "value": "IT Service Desk"
+            },
+            {
+              "field": "From (address)",
+              "match": "external",
+              "value": "it-support[@]examp1e[.]example"
+            }
+          ],
+          "rule_id": "SENDER_DISPLAY_NAME_SPOOF",
+          "score": 20
+        },
+        {
+          "analyzer": "content",
+          "description": "The text asks for a password, verification code or similar.",
+          "evidence": [
+            {
+              "field": "Subject",
+              "match": "verify your account",
+              "value": "Action required: verify your account"
+            },
+            {
+              "field": "Body",
+              "match": "verify your password",
+              "value": "be suspended within 24 hours unless you verify your password at the secure portal below: https:/"
+            }
+          ],
+          "rule_id": "CONTENT_CREDENTIAL_REQUEST",
+          "score": 15
+        },
+        {
+          "analyzer": "auth",
+          "description": "SPF failed (softfail counts less).",
+          "evidence": [
+            {
+              "field": "Authentication-Results",
+              "match": "spf=fail smtp.mailfrom=examp1e.example",
+              "value": "mx.example.edu; spf=fail smtp.mailfrom=examp1e.example; dkim=none header.d=examp1e.example; dmarc=none header.from=examp1e.example"
+            }
+          ],
+          "rule_id": "AUTH_SPF_FAIL",
+          "score": 10
+        },
+        {
+          "analyzer": "content",
+          "description": "Urgent or threatening language (counted once).",
+          "evidence": [
+            {
+              "field": "Subject",
+              "match": "Action required",
+              "value": "Action required: verify your account"
+            },
+            {
+              "field": "Body",
+              "match": "within 24 hours",
+              "value": "ccount. Your account will be suspended within 24 hours unless you verify your password at the"
+            },
+            {
+              "field": "Body",
+              "match": "account will be suspended",
+              "value": "your Example University account. Your account will be suspended within 24 hours unless you verify your"
+            }
+          ],
+          "rule_id": "CONTENT_URGENCY",
+          "score": 5
+        }
+      ],
       "forwarded_inline": false,
       "from": {
         "address": "it-support@examp1e.example",
@@ -58,8 +146,10 @@
       ],
       "reply_to": [],
       "return_path": null,
+      "score": 80,
       "sent_at": "2026-11-24T09:57:55+00:00",
-      "subject": "Action required: verify your account"
+      "subject": "Action required: verify your account",
+      "verdict": "malicious"
     }
   ],
   "mode": "attachment"

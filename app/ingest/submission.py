@@ -28,4 +28,4 @@ def accept_submission(
     store: BlobStore = app.state.store
     report = submit(session, store, raw, source=source, reporter_email=reporter_email)
     session.commit()
-    return process(session, store, report.id, settings.policy)
+    return process(session, store, report.id, settings.policy, rules_file=settings.rules_file)

@@ -1,6 +1,7 @@
 {
   "emails": [
     {
+      "analysis_errors": {},
       "attachments": [],
       "authentication_results": [],
       "body_text_chars": 97,
@@ -9,6 +10,21 @@
         "unknown charset 'x-made-up-charset', decoded as UTF-8",
         "malformed From address: 'Unclosed Quote <weird@example.com'",
         "invalid Date header: 'Someday, 99 Foo 20XX 25:61:00'"
+      ],
+      "findings": [
+        {
+          "analyzer": "auth",
+          "description": "No authentication results from our own mail server (information only).",
+          "evidence": [
+            {
+              "field": "Authentication-Results",
+              "match": "no header from a trusted server",
+              "value": "(none)"
+            }
+          ],
+          "rule_id": "AUTH_NO_TRUSTED_RESULTS",
+          "score": 0
+        }
       ],
       "forwarded_inline": false,
       "from": {
@@ -39,8 +55,10 @@
       ],
       "reply_to": [],
       "return_path": null,
+      "score": 0,
       "sent_at": null,
-      "subject": "��ojX�m� � hello"
+      "subject": "��ojX�m� � hello",
+      "verdict": "no_issues"
     }
   ],
   "mode": "direct"

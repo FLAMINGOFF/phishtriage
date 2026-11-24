@@ -194,6 +194,8 @@ class Settings(BaseSettings):
 
     # Bearer token for POST /api/reports. Unset means the API is disabled.
     api_token: SecretStr | None = None
+    # Optional copy of app/scoring/rules.yaml to tune points without rebuilding the image.
+    rules_file: Path | None = None
 
     # Threat-intel keys are optional: without them lookups are skipped, nothing breaks.
     vt_api_key: SecretStr | None = None

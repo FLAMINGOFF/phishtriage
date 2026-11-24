@@ -1,6 +1,7 @@
 {
   "emails": [
     {
+      "analysis_errors": {},
       "attachments": [],
       "authentication_results": [
         {
@@ -12,8 +13,77 @@
           }
         }
       ],
-      "body_text_chars": 371,
+      "body_text_chars": 419,
       "defects": [],
+      "findings": [
+        {
+          "analyzer": "content",
+          "description": "The text asks for a password, verification code or similar.",
+          "evidence": [
+            {
+              "field": "Body",
+              "match": "confirm your password",
+              "value": "Your account will be closed unless you confirm your password and pay the customs fee within 24 hours"
+            }
+          ],
+          "rule_id": "CONTENT_CREDENTIAL_REQUEST",
+          "score": 15
+        },
+        {
+          "analyzer": "urls",
+          "description": "A link points to a bare IP address.",
+          "evidence": [
+            {
+              "field": "URL",
+              "match": "host is an IP address (198.51.100.14)",
+              "value": "hxxp://198[.]51[.]100[.]14/track?id=p4rc3l"
+            }
+          ],
+          "rule_id": "URL_IP_HOST",
+          "score": 15
+        },
+        {
+          "analyzer": "content",
+          "description": "Urgent or threatening language (counted once).",
+          "evidence": [
+            {
+              "field": "Subject",
+              "match": "parcel is on hold",
+              "value": "Fwd: Your parcel is on hold"
+            },
+            {
+              "field": "Body",
+              "match": "within 24 hours",
+              "value": "your password and pay the customs fee within 24 hours: hxxps://short[.]example/p4rc3l Tracking"
+            },
+            {
+              "field": "Body",
+              "match": "parcel is on hold",
+              "value": "on, 23 Nov 2026 at 18:02 Subject: Your parcel is on hold To: <bob@example.edu> Your parcel c"
+            },
+            {
+              "field": "Body",
+              "match": "account will be closed",
+              "value": "our parcel could not be delivered. Your account will be closed unless you confirm your password and p"
+            }
+          ],
+          "rule_id": "CONTENT_URGENCY",
+          "score": 5
+        },
+        {
+          "analyzer": "urls",
+          "description": "A link uses a URL shortener that hides the destination.",
+          "evidence": [
+            {
+              "field": "URL",
+              "match": "link shortener",
+              "value": "hxxps://short[.]example/p4rc3l"
+            }
+          ],
+          "rule_id": "URL_SHORTENER",
+          "score": 5
+        }
+      ],
       "forwarded_inline": true,
       "from": {
         "address": "bob@example.edu",
@@ -32,6 +102,16 @@
           "defanged": "short[.]example",
           "type": "domain",
           "value": "short.example"
+        },
+        {
+          "defanged": "hxxp://198[.]51[.]100[.]14/track?id=p4rc3l",
+          "type": "url",
+          "value": "http://198.51.100.14/track?id=p4rc3l"
+        },
+        {
+          "defanged": "198[.]51[.]100[.]14",
+          "type": "ip",
+          "value": "198.51.100.14"
         }
       ],
       "received": [
@@ -43,8 +123,10 @@
       ],
       "reply_to": [],
       "return_path": null,
+      "score": 40,
       "sent_at": "2026-11-24T10:19:58+00:00",
-      "subject": "Fwd: Your parcel is on hold"
+      "subject": "Fwd: Your parcel is on hold",
+      "verdict": "suspicious"
     }
   ],
   "mode": "inline"

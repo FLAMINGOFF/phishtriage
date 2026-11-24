@@ -1,6 +1,7 @@
 {
   "emails": [
     {
+      "analysis_errors": {},
       "attachments": [],
       "authentication_results": [
         {
@@ -14,6 +15,7 @@
       ],
       "body_text_chars": 81,
       "defects": [],
+      "findings": [],
       "forwarded_inline": false,
       "from": {
         "address": "library@example.edu",
@@ -32,8 +34,10 @@
       ],
       "reply_to": [],
       "return_path": null,
+      "score": 0,
       "sent_at": "2026-11-24T06:00:00+00:00",
-      "subject": "Library opening hours over the holidays"
+      "subject": "Library opening hours over the holidays",
+      "verdict": "no_issues"
     }
   ],
   "mode": "direct"
