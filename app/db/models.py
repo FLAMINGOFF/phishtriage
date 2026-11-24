@@ -141,6 +141,8 @@ class Report(Base):
     reporter_dmarc: Mapped[str | None] = mapped_column(String(16))
     reply_status: Mapped[str | None] = mapped_column(String(200))
     replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    # Set when retention deleted the raw message, attachments and bodies (app.retention).
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # The message as it was submitted (for IMAP: the reporter's wrapper message).
     submission_path: Mapped[str | None] = mapped_column(String(255))

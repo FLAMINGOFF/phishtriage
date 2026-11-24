@@ -164,6 +164,8 @@ CONSOLE_PAGES = [
     "/reports?verdict=malicious",
     "/upload",
     "/audit",
+    "/stats",
+    "/stats?weeks=4",
     REPORT,
     f"{REPORT}/status",
     f"{REPORT}/body",

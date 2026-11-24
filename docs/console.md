@@ -28,13 +28,15 @@ printf '%s\n' "$PASSWORD" | python -m app.cli create-user bob@example.edu --pass
 | `/reports/{id}` | Verdict and score, the review forms (verdict, note, "Analyse again"), summary, matched rules with evidence, indicators (defanged) with threat intel, attachments, Authentication-Results (trusted or not), the Received chain, the body, all headers, parser defects and the report's activity. |
 | `/reports/{id}/body` | The sanitised HTML body, only ever shown inside `<iframe sandbox>` on the detail page. |
 | `/upload` | Upload an `.eml` file. |
+| `/stats` | Statistics for the last 4 to 52 weeks: reported emails per week, verdicts, time to verdict, analyst reviews, channels and the most frequent rules. |
 | `/audit` | The audit log (admins), filterable by action and user. |
 
 ### Verdicts and notes
 
 * Setting a verdict stores it as `analyst_verdict` and closes the report (`closed_at`).
-  The automatic score and verdict stay untouched: M6 compares them with the analysts'
-  decisions to tune the rule weights. Choosing "Automatic" again re-opens the report.
+  The automatic score and verdict stay untouched, so the analysts' decisions can be
+  compared with them to tune the rule weights (see [evaluation.md](evaluation.md) and the
+  statistics page). Choosing "Automatic" again re-opens the report.
 * A note is a free-text entry (up to 2,000 characters) in the audit log, linked to the
   report. Notes and verdict changes are shown on the report as its activity.
 * "Analyse again" re-queues a finished, stand-alone report (useful after adding an intel

@@ -27,7 +27,7 @@ from app.redis_client import ping_redis, redis_client
 from app.storage import BlobStore
 from app.web.auth import COOKIE_NAME, SECURE_COOKIE_NAME, LoginThrottle, SessionStore
 from app.web.deps import LoginRequired, login_url
-from app.web.routes import audit_log, auth, exports, health, reports
+from app.web.routes import audit_log, auth, exports, health, reports, stats
 from app.web.routes.health import Probe
 from app.web.security import (
     BodySizeLimitMiddleware,
@@ -111,6 +111,7 @@ def create_app(
     app.include_router(upload.router)
     app.include_router(reports.router)
     app.include_router(exports.router)
+    app.include_router(stats.router)
     app.include_router(audit_log.router)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     return app

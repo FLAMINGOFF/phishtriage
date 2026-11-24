@@ -97,6 +97,22 @@ services:
       retries: 4
       start_period: 20s
 
+  # Demo data, on demand only: `docker compose run --rm seed` (scripts/seed_demo.py).
+  # The image holds no scripts or sample emails, so they are mounted read-only here.
+  seed:
+    <<: *app
+    profiles: ["demo"]
+    restart: "no"
+    command: ["python", "scripts/seed_demo.py"]
+    volumes:
+      - ./config:/app/config:ro
+      - storage:/var/lib/phishtriage
+      - ./scripts:/app/scripts:ro
+      - ./tests/fixtures:/app/tests/fixtures:ro
+    depends_on:
+      web:
+        condition: service_healthy
+
   db:
     image: postgres:16.16-alpine
     environment:

@@ -21,6 +21,7 @@ REPORT_REQUEUE = "report.requeue"
 ATTACHMENT_DOWNLOAD = "attachment.download"
 EXPORT_CSV = "export.csv"
 EXPORT_STIX = "export.stix"
+RETENTION_PURGE = "retention.purge"
 
 ACTIONS = (
     LOGIN_SUCCESS,
@@ -34,6 +35,7 @@ ACTIONS = (
     ATTACHMENT_DOWNLOAD,
     EXPORT_CSV,
     EXPORT_STIX,
+    RETENTION_PURGE,
 )
 
 

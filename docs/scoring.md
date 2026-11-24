@@ -43,7 +43,7 @@ issues. Analysts can re-classify; the original score is kept.
 
 ## Rules
 
-Initial points from the project plan; M6 re-tunes them from the evaluation set.
+Initial points from the project plan. How they are measured and tuned: [evaluation.md](evaluation.md).
 
 | Rule ID | Analyzer | Points | Meaning |
 | --- | --- | --- | --- |

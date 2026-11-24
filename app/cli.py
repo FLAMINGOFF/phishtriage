@@ -256,6 +256,31 @@ def cmd_create_user(args: argparse.Namespace, out: TextIO) -> int:
     return 0
 
 
+def cmd_purge(args: argparse.Namespace, out: TextIO) -> int:
+    from app.db.session import get_sessionmaker
+    from app.retention import purge_expired
+    from app.storage import BlobStore
+
+    try:
+        settings = get_settings()
+    except (ConfigError, ValidationError) as exc:
+        print(f"configuration error: {exc}", file=sys.stderr)
+        return 2
+    days = args.days or settings.retention_days
+    with get_sessionmaker()() as session:
+        result = purge_expired(
+            session, BlobStore(settings.storage_dir), retention_days=days, dry_run=args.dry_run
+        )
+    verb = "would purge" if args.dry_run else "purged"
+    cutoff = result.cutoff.isoformat(timespec="seconds") if result.cutoff else "?"
+    print(
+        f"{verb} {result.reports} report(s) received before {cutoff}: "
+        f"{result.files_deleted} file(s) deleted, {result.files_kept} still in use",
+        file=out,
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m app.cli", description="PhishTriage CLI")
     parser.add_argument("--version", action="version", version=f"PhishTriage {__version__}")
@@ -290,6 +315,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--update", action="store_true", help="change the password and role of an existing user"
     )
     create_user.set_defaults(handler=cmd_create_user)
+    purge = sub.add_parser(
+        "purge", help="delete raw messages and attachments past the retention period"
+    )
+    purge.add_argument("--dry-run", action="store_true", help="only count, change nothing")
+    purge.add_argument(
+        "--days", type=int, metavar="N", help="retention in days (default: RETENTION_DAYS)"
+    )
+    purge.set_defaults(handler=cmd_purge)
     return parser
 
 
