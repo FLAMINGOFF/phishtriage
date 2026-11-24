@@ -60,6 +60,14 @@ def registered_domain(host: str) -> str:
     return result.top_domain_under_public_suffix or host
 
 
+def has_public_suffix(host: str) -> bool:
+    """True for ``www.example.org`` or ``evil.example``; false for ``foo.bar.baz``."""
+    host = to_ascii(host)
+    if parse_ip(host) is not None:
+        return False
+    return bool(_extract(host).top_domain_under_public_suffix)
+
+
 def is_subdomain_or_same(host: str, domain: str) -> bool:
     host, domain = to_ascii(host), to_ascii(domain)
     return host == domain or host.endswith("." + domain)

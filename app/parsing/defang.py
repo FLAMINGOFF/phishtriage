@@ -70,6 +70,22 @@ def defang(value: str, kind: str) -> str:
     return value  # hashes are harmless
 
 
+_URL_IN_TEXT = re.compile(r"(?i)\b(?:(?:https?|ftp)://|www\.)[^\s<>\"']+")
+
+
+def defang_text(text: str) -> str:
+    """Defang every URL (and ``www.`` host) inside free text, e.g. an evidence snippet."""
+
+    def replace(match: re.Match[str]) -> str:
+        url = match.group(0)
+        if url.lower().startswith("www."):
+            host, sep, rest = url.partition("/")
+            return defang_domain(host) + sep + rest
+        return defang_url(url)
+
+    return _URL_IN_TEXT.sub(replace, text)
+
+
 _REFANG = [
     (re.compile(r"\bhxxp(s?)(?=\[?:)", re.IGNORECASE), r"http\1"),
     (re.compile(r"\bfxp(?=\[?:)", re.IGNORECASE), "ftp"),
