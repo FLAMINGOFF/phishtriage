@@ -8,6 +8,9 @@ Commands:
   Handy as ``docker compose run --rm web python -m app.cli check-config``.
 * ``requeue [ID ...] [--failed] [--stuck-minutes N]``: hand reports to the worker again,
   e.g. after Redis was down when they arrived.
+* ``create-user EMAIL [--role analyst|admin] [--password-stdin] [--update]``: create a
+  console account (or, with ``--update``, change its password and role). The password
+  is asked twice without echo, or read from one line of standard input.
 
 ``analyze`` never calls a threat-intel provider; only the worker does.
 """
@@ -15,7 +18,9 @@ Commands:
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
+import re
 import sys
 import uuid
 from collections.abc import Sequence
@@ -197,6 +202,60 @@ def cmd_requeue(args: argparse.Namespace, out: TextIO) -> int:
     return 0
 
 
+# Deliberately simple: one "@", no spaces, a dot in the domain. Accounts are created by
+# an administrator, so this only catches typos.
+_ACCOUNT_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _read_password(from_stdin: bool) -> str | None:
+    if from_stdin:
+        return sys.stdin.readline().rstrip("\r\n")
+    first = getpass.getpass("Password: ")
+    if getpass.getpass("Repeat the password: ") != first:
+        print("the passwords do not match", file=sys.stderr)
+        return None
+    return first
+
+
+def cmd_create_user(args: argparse.Namespace, out: TextIO) -> int:
+    from sqlalchemy import select
+
+    from app.db.models import User, UserRole
+    from app.db.session import get_sessionmaker
+    from app.web.auth import hash_password, password_problem
+
+    email = args.email.strip().lower()
+    if len(email) > 320 or not _ACCOUNT_EMAIL.match(email):
+        print(f"not an email address: {args.email!r}", file=sys.stderr)
+        return 2
+    password = _read_password(args.password_stdin)
+    if password is None:
+        return 2
+    problem = password_problem(password, email)
+    if problem:
+        print(problem, file=sys.stderr)
+        return 2
+    try:
+        sessionmaker = get_sessionmaker()
+    except (ConfigError, ValidationError) as exc:
+        print(f"configuration error: {exc}", file=sys.stderr)
+        return 2
+    with sessionmaker() as session:
+        user = session.scalar(select(User).where(User.email == email))
+        if user is not None and not args.update:
+            print(f"{email} already exists; use --update to change it", file=sys.stderr)
+            return 1
+        created = user is None
+        if user is None:
+            user = User(email=email)
+            session.add(user)
+        user.password_hash = hash_password(password)
+        user.role = UserRole(args.role)
+        session.commit()
+    print(f"{'created' if created else 'updated'} {args.role} {email}", file=out)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m app.cli", description="PhishTriage CLI")
     parser.add_argument("--version", action="version", version=f"PhishTriage {__version__}")
@@ -219,6 +278,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="reports still queued or analysing N minutes after they arrived",
     )
     requeue.set_defaults(handler=cmd_requeue)
+    create_user = sub.add_parser("create-user", help="create a console account")
+    create_user.add_argument("email", help="the login (email address)")
+    create_user.add_argument(
+        "--role", choices=["analyst", "admin"], default="analyst", help="default: analyst"
+    )
+    create_user.add_argument(
+        "--password-stdin", action="store_true", help="read the password from standard input"
+    )
+    create_user.add_argument(
+        "--update", action="store_true", help="change the password and role of an existing user"
+    )
+    create_user.set_defaults(handler=cmd_create_user)
     return parser
 
 

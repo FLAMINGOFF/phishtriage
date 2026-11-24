@@ -1,0 +1,15 @@
+{% macro pager(path, query, page, pages) %}
+{% if pages > 1 %}
+<nav class="pager" aria-label="Pages">
+  <ul>
+    <li>{% if page > 1 %}<a href="{{ path }}?{{ dict(query, page=page - 1)|urlencode }}" rel="prev">&larr; Newer</a>{% else %}<span class="muted">&larr; Newer</span>{% endif %}</li>
+    <li>Page {{ page }} of {{ pages }}</li>
+    <li>{% if page < pages %}<a href="{{ path }}?{{ dict(query, page=page + 1)|urlencode }}" rel="next">Older &rarr;</a>{% else %}<span class="muted">Older &rarr;</span>{% endif %}</li>
+  </ul>
+</nav>
+{% endif %}
+{% endmacro %}
+
+{% macro verdict_badge(verdict, labels) %}
+{% if verdict %}<span class="badge badge-{{ verdict.value }}">{{ labels[verdict.value] }}</span>{% else %}<span class="muted">-</span>{% endif %}
+{% endmacro %}

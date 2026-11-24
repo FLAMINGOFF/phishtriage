@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pager, verdict_badge %}
+{% block title %}Reports · PhishTriage{% endblock %}
+{% block content %}
+<hgroup>
+  <h1>Reports</h1>
+  <p>{{ total }} report{{ "" if total == 1 else "s" }}{% if query %} match the filter{% endif %}.</p>
+</hgroup>
+
+<form method="get" action="/reports" class="filters">
+  <div class="grid">
+    <label>Verdict
+      <select name="verdict">
+        <option value="">Any</option>
+        {% for v in verdicts %}<option value="{{ v.value }}"{% if filters.verdict == v.value %} selected{% endif %}>{{ verdict_labels[v.value] }}</option>{% endfor %}
+        <option value="none"{% if filters.verdict == "none" %} selected{% endif %}>No verdict yet</option>
+      </select>
+    </label>
+    <label>Status
+      <select name="status">
+        <option value="">Any</option>
+        {% for s in statuses %}<option value="{{ s.value }}"{% if filters.status == s.value %} selected{% endif %}>{{ s.value }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Reviewed
+      <select name="reviewed">
+        <option value="">Any</option>
+        <option value="no"{% if filters.reviewed == "no" %} selected{% endif %}>Not yet</option>
+        <option value="yes"{% if filters.reviewed == "yes" %} selected{% endif %}>Yes</option>
+      </select>
+    </label>
+    <label>Sort
+      <select name="sort">
+        <option value="newest"{% if filters.sort == "newest" %} selected{% endif %}>Newest first</option>
+        <option value="oldest"{% if filters.sort == "oldest" %} selected{% endif %}>Oldest first</option>
+        <option value="score"{% if filters.sort == "score" %} selected{% endif %}>Highest score</option>
+      </select>
+    </label>
+  </div>
+  <button type="submit">Filter</button>
+  {% if query %}<a href="/reports" class="secondary">Clear</a>{% endif %}
+</form>
+
+{% if rows %}
+<div class="overflow-auto">
+<table class="queue">
+  <thead>
+    <tr><th>Received</th><th>Subject</th><th>From</th><th>Reported by</th><th>Status</th><th>Verdict</th><th>Score</th></tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+  <tr>
+    <td>{{ r.received_at|timestamp }}</td>
+    <td><a href="/reports/{{ r.id }}">{{ r.subject|visible if r.subject else "(no subject)" }}</a>{% if r.parent_id %} <small class="muted">(split)</small>{% endif %}</td>
+    <td>{{ r.from_addr|visible if r.from_addr else "-" }}</td>
+    <td>{{ r.reporter_email|visible if r.reporter_email else r.source.value }}</td>
+    <td>{{ r.status.value }}</td>
+    <td>
+      {% if r.analyst_verdict %}{{ verdict_badge(r.analyst_verdict, verdict_labels) }} <small class="muted">analyst</small>
+      {% else %}{{ verdict_badge(r.verdict, verdict_labels) }}{% endif %}
+    </td>
+    <td>{{ r.score if r.score is not none else "-" }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{{ pager("/reports", query, page, pages) }}
+{% else %}
+<p>No reports{% if query %} match this filter{% endif %}. <a href="/upload">Upload an .eml file</a> to start.</p>
+{% endif %}
+
+<details class="export">
+  <summary>Export indicators (CSV or STIX 2.1)</summary>
+  <form method="get" action="/exports/iocs.csv">
+    <fieldset>
+      <legend>Reports with the verdict</legend>
+      {% for v in verdicts %}
+      <label><input type="checkbox" name="verdict" value="{{ v.value }}"{% if v.value in ("malicious", "suspicious") %} checked{% endif %}> {{ verdict_labels[v.value] }}</label>
+      {% endfor %}
+    </fieldset>
+    <label>Received in the last
+      <input type="number" name="days" value="30" min="1" max="365" required> days
+    </label>
+    <div role="group">
+      <button type="submit">Download CSV</button>
+      <button type="submit" formaction="/exports/iocs.stix.json" class="secondary">Download STIX 2.1</button>
+    </div>
+    <small>The analyst's verdict counts where there is one. Every export is written to the audit log.</small>
+  </form>
+</details>
+{% endblock %}

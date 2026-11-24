@@ -9,14 +9,14 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
-from app.db.models import ReportSource
+from app.db.models import ReportSource, User
 from app.ingest.submission import accept_submission
 from app.parsing.eml import MAX_MESSAGE_BYTES
 from app.queueing import QueueUnavailable
-from app.web.deps import get_session
+from app.web.deps import get_session, require_csrf, require_user
 from app.web.templating import templates
 
-router = APIRouter(tags=["upload"])
+router = APIRouter(tags=["upload"], dependencies=[Depends(require_user)])
 
 
 @router.get("/upload", response_class=HTMLResponse)
@@ -24,10 +24,11 @@ def upload_form(request: Request) -> Response:
     return templates.TemplateResponse(request, "upload.html", {"error": None})
 
 
-@router.post("/upload")
+@router.post("/upload", dependencies=[Depends(require_csrf)])
 async def upload(
     request: Request,
     session: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_user)],
     file: Annotated[UploadFile, File()],
 ) -> Response:
     raw = await file.read(MAX_MESSAGE_BYTES + 1)
@@ -39,7 +40,9 @@ async def upload(
         )
     try:
         report = await run_in_threadpool(
-            accept_submission, request.app, session, raw, source=ReportSource.UPLOAD
+            lambda: accept_submission(
+                request.app, session, raw, source=ReportSource.UPLOAD, uploaded_by=user
+            )
         )
     except QueueUnavailable:
         return templates.TemplateResponse(

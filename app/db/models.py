@@ -78,6 +78,11 @@ class ObservableType(StrEnum):
     SHA256 = "sha256"
 
 
+class UserRole(StrEnum):
+    ANALYST = "analyst"
+    ADMIN = "admin"
+
+
 class IntelProvider(StrEnum):
     VIRUSTOTAL = "virustotal"
     URLHAUS = "urlhaus"
@@ -273,3 +278,45 @@ class IntelResultRecord(Base):
     fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     observable: Mapped[Observable] = relationship(back_populates="intel_results")
+
+
+class User(Base):
+    """An analyst account for the web console (created with ``python -m app.cli create-user``)."""
+
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(String(320), unique=True)  # stored lower-case
+    password_hash: Mapped[str] = mapped_column(String(255))  # argon2id, never the password
+    role: Mapped[UserRole] = mapped_column(_enum(UserRole, "user_role"), default=UserRole.ANALYST)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role is UserRole.ADMIN
+
+
+class AuditLog(Base):
+    """Who did what, when: logins, re-classifications, notes, exports, downloads.
+
+    Rows are only ever inserted. Analyst notes are audit entries too (action ``report.note``),
+    so a note can never be edited or deleted without a trace.
+    """
+
+    __tablename__ = "audit_log"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    action: Mapped[str] = mapped_column(String(32), index=True)
+    report_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("reports.id", ondelete="SET NULL"), index=True
+    )
+    details: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+
+    user: Mapped[User | None] = relationship()

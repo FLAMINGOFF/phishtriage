@@ -1,7 +1,7 @@
 # Progress
 
 ## Current milestone
-M4 – Analyst console (next)
+M5 – Mailbox intake and replies (next)
 
 ## Done
 - M0 – Skeleton: uv project, ruff/mypy/pytest/pre-commit, settings loader (.env +
@@ -32,6 +32,16 @@ M4 – Analyst console (next)
   `scripts/submit_report.py`; `docs/intel.md`. Acceptance tests: the pipeline runs with no
   keys, mocked answers are stored per observable, and a fake-clock test shows no
   60-second window with more than 4 VirusTotal requests.
+- M4 – Analyst console: `users` and `audit_log` tables, argon2id passwords, Redis-backed
+  sessions, HMAC CSRF tokens, account and address login throttling,
+  `python -m app.cli create-user`; report queue (filters, sort, pages), detail page
+  (rules and evidence, headers, Authentication-Results, Received chain, defanged IOCs
+  with intel, attachments, sandboxed sanitised HTML body, all headers), analyst verdict,
+  notes, "Analyse again", attachment download as an `infected` ZIP, IOC export as CSV
+  and STIX 2.1 (per report and in bulk), admin audit log page; `docs/console.md`.
+  Acceptance tests: console pages redirect to the login page, a POST without a CSRF
+  token gets 403, XSS payloads in subject, display name, file name and body are shown
+  escaped, and every STIX export parses with `stix2`.
 
 ## Open issues
 - None yet
@@ -162,8 +172,43 @@ M4 – Analyst console (next)
 - M3: the offline CLI (`app.cli analyze`) never calls a provider.
 - M3: tests block the network with an autouse respx router; three opt-in live tests
   (`-m live`) check the real providers with the user's keys.
+- M4: notes are audit-log entries (`report.note`) instead of a ninth table, so the plan's
+  data model stays as it is and every note is attributable by construction.
+- M4: sessions live in Redis (already part of the stack), not in a table: logout and
+  expiry are a key deletion and a TTL. Redis keys hold the SHA-256 of the session token.
+  Idle timeout 60 minutes, absolute lifetime 12 hours (`SESSION_IDLE_MINUTES`,
+  `SESSION_MAX_HOURS`).
+- M4: CSRF uses a stateless HMAC of the browser's cookie token (signed with
+  `SECRET_KEY`) instead of a stored token; every visitor gets the cookie, so the login
+  form is protected too. The same cookie carries the session token after login (rotated
+  on login and logout). POSTs with a foreign or `null` `Origin` are refused as well.
+- M4: `Referrer-Policy` changed from `no-referrer` to `same-origin`: under `no-referrer`
+  Chromium sends `Origin: null` with form POSTs, which the CSRF check refuses (found
+  with a real browser against the Compose stack). Nothing goes to other sites either way.
+- M4: the Compose demo sets `SESSION_COOKIE_SECURE=false` (plain http on localhost), as
+  the plan allows; `APP_ENV=prod` refuses that setting.
+- M4: besides the plan's per-account lock (5 failures / 15 min), 30 failures from one
+  address lock that address for 15 minutes, which slows password spraying.
+- M4: the audit log page is for the `admin` role; analysts see the activity of each
+  report on its page.
+- M4: setting an analyst verdict sets `closed_at`; going back to "Automatic" clears both.
+  The automatic score and verdict are never overwritten.
+- M4: the infected ZIP is written by a small built-in ZipCrypto writer (no extra
+  dependency, the format every unzip tool opens); the download name is derived from
+  the SHA-256, never from the attacker's file name.
+- M4: CSV cells that start with `=`, `+`, `-`, `@`, tab or CR get a leading `'`
+  (formula injection). STIX IDs are UUIDv5 so repeated exports de-duplicate;
+  subjects and reporter addresses are not exported.
+- M4: exports are plain GET downloads, each written to the audit log with its scope
+  and counts. The bulk export defaults to malicious + suspicious reports of the last 30
+  days and is capped at 5,000 reports.
+- M4: "Analyse again" in the console is limited to finished, stand-alone reports;
+  re-analysing a split submission rebuilds its reports under new IDs, so that stays a
+  CLI operation (`app.cli requeue`).
 
 ## Manual steps for the user
+- Create the first console account: `docker compose exec web python -m app.cli create-user
+  you@example.edu --role admin` (asks for a password of 12+ characters).
 - Optional: set `API_TOKEN` in `.env` (at least 32 characters) to enable the REST API.
 - Optional: create a VirusTotal account and put `VT_API_KEY` in `.env`.
 - Optional: request a URLhaus Auth-Key at https://auth.abuse.ch/ and put `URLHAUS_AUTH_KEY` in `.env`.

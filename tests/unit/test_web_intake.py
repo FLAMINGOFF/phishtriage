@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.web.security import CONTENT_SECURITY_POLICY
+from tests.unit.console_helpers import csrf
 
 TOKEN = "t" * 40
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
@@ -17,8 +18,16 @@ Loader = Callable[[str], bytes]
 
 
 @pytest.fixture
-def client(app_factory: Callable[..., FastAPI]) -> TestClient:
-    return TestClient(app_factory(api_token=TOKEN))
+def client(app_factory: Callable[..., FastAPI], console) -> TestClient:
+    """Logged in to the console; the API ignores the cookie and wants the bearer token."""
+    return console(app_factory(api_token=TOKEN))
+
+
+def upload(client: TestClient, content: bytes, **kwargs: object):
+    token = csrf(client, "/upload")
+    return client.post(
+        "/upload", files={"file": ("x.eml", content)}, data={"csrf_token": token}, **kwargs
+    )
 
 
 def test_api_disabled_without_token(app_factory: Callable[..., FastAPI]) -> None:
@@ -102,7 +111,7 @@ def test_api_rejected_message_is_reported(client: TestClient) -> None:
 
 
 def test_queue_unavailable(
-    app_factory: Callable[..., FastAPI], fixture_bytes: Loader, session_factory
+    app_factory: Callable[..., FastAPI], fixture_bytes: Loader, session_factory, console
 ) -> None:
     from app.db.models import Report, ReportStatus
     from app.queueing import QueueUnavailable
@@ -110,10 +119,10 @@ def test_queue_unavailable(
     def broken(_report_id: object) -> None:
         raise QueueUnavailable("connection refused")
 
-    client = TestClient(app_factory(api_token=TOKEN, enqueue=broken))
+    client = console(app_factory(api_token=TOKEN, enqueue=broken))
     response = client.post("/api/reports", content=fixture_bytes("01"), headers={**AUTH, **RFC822})
     assert response.status_code == 503
-    response = client.post("/upload", files={"file": ("x.eml", fixture_bytes("01"))})
+    response = upload(client, fixture_bytes("01"))
     assert response.status_code == 503
     assert "could not be queued" in response.text
     with session_factory() as session:
@@ -124,15 +133,17 @@ def test_queue_unavailable(
 
 
 def test_report_page_polls_until_done(
-    app_factory: Callable[..., FastAPI], fixture_bytes: Loader, make_settings, worker_context
+    app_factory: Callable[..., FastAPI],
+    fixture_bytes: Loader,
+    make_settings,
+    worker_context,
+    console,
 ) -> None:
     from app.jobs import run_report
 
     queued: list[object] = []
-    client = TestClient(app_factory(enqueue=queued.append))
-    response = client.post(
-        "/upload", files={"file": ("x.eml", fixture_bytes("02"))}, follow_redirects=False
-    )
+    client = console(app_factory(enqueue=queued.append))
+    response = upload(client, fixture_bytes("02"), follow_redirects=False)
     location = response.headers["location"]
     page = client.get(location).text
     assert "Waiting in the queue" in page
@@ -177,7 +188,7 @@ def test_middleware_limit_applies_to_every_route(app_factory: Callable[..., Fast
     app.add_middleware(BodySizeLimitMiddleware, max_bytes=10)
     client = TestClient(app)
     response = client.post("/upload", files={"file": ("a.eml", b"x" * 100)})
-    assert response.status_code == 413
+    assert response.status_code == 413  # refused before login or CSRF are even looked at
 
     def chunks():
         yield b"x" * 8
@@ -192,11 +203,7 @@ def test_upload_flow(client: TestClient, fixture_bytes: Loader) -> None:
     assert form.status_code == 200
     assert 'enctype="multipart/form-data"' in form.text
 
-    response = client.post(
-        "/upload",
-        files={"file": ("x.eml", fixture_bytes("02"), "message/rfc822")},
-        follow_redirects=False,
-    )
+    response = upload(client, fixture_bytes("02"), follow_redirects=False)
     assert response.status_code == 303
     location = response.headers["location"]
     assert location.startswith("/reports/")
@@ -215,7 +222,7 @@ def test_upload_flow(client: TestClient, fixture_bytes: Loader) -> None:
 
 
 def test_upload_empty_file(client: TestClient) -> None:
-    response = client.post("/upload", files={"file": ("x.eml", b"   ")})
+    response = upload(client, b"   ")
     assert response.status_code == 422
     assert "The file is empty." in response.text
 
@@ -227,7 +234,7 @@ def test_report_page_escapes_hostile_content(client: TestClient) -> None:
         b"Content-Type: text/plain\r\n\r\n"
         b"</pre><script>alert(3)</script> safe\xe2\x80\xae\r\n"
     )
-    response = client.post("/upload", files={"file": ("x.eml", hostile)}, follow_redirects=False)
+    response = upload(client, hostile, follow_redirects=False)
     page = client.get(response.headers["location"]).text
     assert "<script>alert" not in page
     assert "<img src=x" not in page
@@ -239,7 +246,7 @@ def test_report_page_404_and_index(client: TestClient) -> None:
     assert client.get("/reports/00000000-0000-0000-0000-000000000000").status_code == 404
     response = client.get("/", follow_redirects=False)
     assert response.status_code == 303
-    assert response.headers["location"] == "/upload"
+    assert response.headers["location"] == "/reports"
 
 
 def test_security_headers(client: TestClient) -> None:
@@ -247,7 +254,7 @@ def test_security_headers(client: TestClient) -> None:
     assert response.headers["content-security-policy"] == CONTENT_SECURITY_POLICY
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["x-frame-options"] == "DENY"
-    assert response.headers["referrer-policy"] == "no-referrer"
+    assert response.headers["referrer-policy"] == "same-origin"
     assert response.headers["cache-control"] == "no-store"
     assert "'unsafe-inline'" not in CONTENT_SECURITY_POLICY
     static = client.get("/static/app.css")
@@ -261,7 +268,8 @@ def test_docs_only_in_dev(app_factory: Callable[..., FastAPI]) -> None:
     assert dev.get("/docs").status_code == 200
     assert "content-security-policy" not in dev.get("/docs").headers
     prod = TestClient(
-        app_factory(app_env="prod", secret_key="s" * 40, imap_ssl=True, api_token=TOKEN)
+        app_factory(app_env="prod", secret_key="s" * 40, imap_ssl=True, api_token=TOKEN),
+        base_url="https://testserver",
     )
     assert prod.get("/docs").status_code == 404
     assert prod.get("/openapi.json").status_code == 404

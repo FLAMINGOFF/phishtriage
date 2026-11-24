@@ -20,6 +20,9 @@ x-app: &app
     IMAP_USER: report-phishing@example.edu
     IMAP_PASSWORD: ${IMAP_PASSWORD:-demo-mailbox-password}
     API_TOKEN: ${API_TOKEN:-}  # empty: the REST API is off
+    # The demo console is plain http on localhost, where a Secure cookie would never be
+    # sent back. Production (APP_ENV=prod) refuses to start with this set to false.
+    SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
   volumes:
     # Policy is mounted, so editing config/settings.yaml needs a restart, not a rebuild.
     - ./config:/app/config:ro

@@ -146,8 +146,8 @@ def worker_context(session_factory, store, fake_redis):
 
 
 @pytest.fixture
-def app_factory(make_settings, session_factory, store, worker_context):
-    """Build the FastAPI app against the test database and blob store.
+def app_factory(make_settings, session_factory, store, worker_context, fake_redis):
+    """Build the FastAPI app against the test database, blob store and fake Redis.
 
     Unless a test passes its own ``enqueue``, a queued report is processed at once, in
     the request, by the same code the worker runs (app.jobs.run_report).
@@ -168,6 +168,45 @@ def app_factory(make_settings, session_factory, store, worker_context):
             session_factory=session_factory,
             store=store,
             enqueue=enqueue or run_now,
+            redis=fake_redis,
         )
+
+    return factory
+
+
+# --------------------------------------------------------------------------- console users
+
+
+@pytest.fixture
+def make_user(session_factory):
+    """Create a console account: ``make_user("a@example.edu", role="admin")``."""
+    from app.db.models import User, UserRole
+    from app.web.auth import hash_password
+    from tests.unit.console_helpers import TEST_PASSWORD
+
+    def factory(
+        email: str = "analyst@example.edu", *, password: str = TEST_PASSWORD, role: str = "analyst"
+    ) -> User:
+        with session_factory() as session:
+            user = User(email=email, password_hash=hash_password(password), role=UserRole(role))
+            session.add(user)
+            session.commit()
+            return user
+
+    return factory
+
+
+@pytest.fixture
+def console(make_user):
+    """A TestClient logged in to the console of ``app`` (over https: the cookie is Secure)."""
+    from fastapi.testclient import TestClient
+
+    from tests.unit.console_helpers import login
+
+    def factory(app: Any, *, email: str = "analyst@example.edu", role: str = "analyst"):
+        make_user(email, role=role)
+        client = TestClient(app, base_url="https://testserver")
+        login(client, email)
+        return client
 
     return factory

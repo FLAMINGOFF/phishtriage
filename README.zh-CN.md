@@ -10,7 +10,7 @@
 PhishTriage 自动解析、分析、查询威胁情报，用可解释的规则打分，回信告诉上报人结果；
 SOC 分析员在 Web 后台复核、改判定、导出 IOC。
 
-> **状态：** 开发中。已完成 M0（项目骨架）、M1（邮件解析与 IOC 提取）、M2（分析器与打分）、M3（队列、worker 与威胁情报）。进度见 [PROGRESS.md](PROGRESS.md)。
+> **状态：** 开发中。已完成 M0（项目骨架）、M1（邮件解析与 IOC 提取）、M2（分析器与打分）、M3（队列、worker 与威胁情报）、M4（分析员后台，v0.1.0）。进度见 [PROGRESS.md](PROGRESS.md)。
 
 ## 演示
 
@@ -83,6 +83,15 @@ Redis 里（VirusTotal 24 小时、URLhaus 1 小时）；VirusTotal 受免费额
 （任意 60 秒内最多 4 次，测试里用假时钟证明），另有每天 500 次的预算。细节、状态含义和配置项见
 [docs/intel.md](docs/intel.md)（英文）。
 
+## 分析员后台
+
+分析员登录后台（账号用 `python -m app.cli create-user` 创建），在报告队列里按判定、状态和是否已复核筛选。
+报告详情页显示判定、每条命中规则及其证据、去活后的 IOC 和情报结果、附件、Authentication-Results、
+Received 链路、纯文本正文，以及放在沙箱 iframe 里的清洗后 HTML 正文。分析员可以改判（保留原始分数）、
+写备注、重新分析、把附件下载成密码为 `infected` 的加密 zip，并把 IOC 导出为 CSV 或 STIX 2.1 bundle。
+登录、改判、备注、下载和导出都会写进审计日志，管理员可以在后台查看。细节见
+[docs/console.md](docs/console.md)（英文）。
+
 ## 安全设计
 
 每封上报邮件都当成攻击者可控的输入。要点如下（完整的 STRIDE 威胁模型见 M6 的
@@ -93,6 +102,8 @@ Redis 里（VirusTotal 24 小时、URLhaus 1 小时）；VirusTotal 受免费额
 - Web 进程从不解析邮件，解析只在 worker 里做。worker 的 HTTP 客户端只能访问写死的情报域名
   （只走 HTTPS、不跟随跳转），邮件内容没法让它去请求别的地址。
 - 压缩包只读目录、不解压；邮件大小和嵌套层数有严格上限。
+- 后台：argon2id 存密码，服务端会话配 HttpOnly/SameSite cookie，所有表单带 CSRF token，
+  同一账号 15 分钟内失败 5 次就锁定，严格的 CSP（不允许内联脚本），所有攻击者可控的字符串都转义显示。
 - 密钥只从环境变量读取；策略文件遇到未知字段直接报错。
 - 容器以非特权用户运行，根文件系统只读，去掉所有 Linux capabilities；演示端口只绑定 `127.0.0.1`。
 
@@ -107,17 +118,20 @@ cp .env.example .env          # 演示可以不配；要填 API key 时需要
 docker compose up --build --wait
 curl http://localhost:8000/healthz   # {"status":"ok"}
 curl http://localhost:8000/readyz    # 检查数据库和 Redis
+docker compose exec web python -m app.cli create-user admin@example.edu --role admin
 ```
+
+最后一条命令会让你为第一个后台账号设置密码（至少 12 个字符）。
 
 | 地址 | 内容 |
 | --- | --- |
-| http://localhost:8000 | PhishTriage Web（M4 起是分析员后台） |
+| http://localhost:8000 | PhishTriage 分析员后台（用刚建的账号登录） |
 | http://localhost:8025 | Mailpit：查看 PhishTriage 发出的回信 |
 
 用合成样例邮件试一下：
 
-- 网页上传：打开 http://localhost:8000/upload ，选择 `tests/fixtures/emails/` 里的任意一封。
-  报告页会等 worker 处理完，然后显示判定、证据和情报结果。
+- 网页上传：登录后打开 http://localhost:8000/upload ，选择 `tests/fixtures/emails/` 里的任意一封。
+  报告页会等 worker 处理完，然后显示判定、证据和情报结果；http://localhost:8000/reports 是报告队列。
 - REST API：在 `.env` 里设置 `API_TOKEN`（至少 32 个字符），重启后提交并等待判定
   （脚本会轮询 `GET /api/reports/{id}`，直到 worker 处理完）：
 

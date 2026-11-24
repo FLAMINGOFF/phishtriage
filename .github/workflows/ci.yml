@@ -124,6 +124,18 @@ jobs:
         run: >-
           python3 scripts/submit_report.py --timeout 120 --expect-verdict malicious
           tests/fixtures/emails/02_html_link_mismatch_b64.eml
+      - name: Log in to the console and see the report in the queue
+        run: |
+          printf '%s\n' 'ci-only-console-password' | docker compose exec -T web \
+            python -m app.cli create-user ci@example.edu --password-stdin
+          jar=$(mktemp)
+          token=$(curl -fsS -c "$jar" -b "$jar" http://127.0.0.1:8000/login \
+            | grep -o 'name="csrf_token" value="[0-9a-f]*"' | head -1 | cut -d'"' -f4)
+          curl -fsS -o /dev/null -c "$jar" -b "$jar" \
+            --data-urlencode "email=ci@example.edu" \
+            --data-urlencode "password=ci-only-console-password" \
+            --data-urlencode "csrf_token=$token" http://127.0.0.1:8000/login
+          curl -fsS -c "$jar" -b "$jar" http://127.0.0.1:8000/reports | grep -q "Mailbox quota exceeded"
       - name: Show state on failure
         if: failure()
         run: |

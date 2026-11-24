@@ -11,7 +11,8 @@ from fastapi import FastAPI
 from sqlalchemy import ColumnElement, or_, select
 from sqlalchemy.orm import Session
 
-from app.db.models import Report, ReportSource, ReportStatus
+from app import audit
+from app.db.models import Report, ReportSource, ReportStatus, User
 from app.pipeline import submit
 from app.queueing import Enqueue, QueueUnavailable
 from app.storage import BlobStore
@@ -26,16 +27,27 @@ def accept_submission(
     *,
     source: ReportSource,
     reporter_email: str | None = None,
+    uploaded_by: User | None = None,
 ) -> Report:
     """Store the message, create a queued report and hand it to the worker.
 
     The web process never parses the email: it only stores the bytes and queues the ID.
     If the queue is down the report is kept but marked failed (it can be re-queued with
-    ``python -m app.cli requeue``), and :class:`QueueUnavailable` is raised.
+    ``python -m app.cli requeue``), and :class:`QueueUnavailable` is raised. An upload
+    from the console is written to the audit log together with the report.
     """
     store: BlobStore = app.state.store
     enqueue: Enqueue = app.state.enqueue
     report = submit(session, store, raw, source=source, reporter_email=reporter_email)
+    if uploaded_by is not None:
+        audit.record(
+            session,
+            audit.REPORT_UPLOAD,
+            user=uploaded_by,
+            report_id=report.id,
+            sha256=report.submission_sha256,
+            size=report.submission_size,
+        )
     session.commit()
     try:
         enqueue(report.id)
