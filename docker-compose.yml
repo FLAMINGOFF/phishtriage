@@ -102,7 +102,7 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7.4.12-alpine
+    image: redis:8.0.0-alpine
     # Append-only file: queued reports survive a Redis restart.
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
