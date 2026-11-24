@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.db.models import ReportSource
 from app.ingest.submission import accept_submission
 from app.parsing.eml import MAX_MESSAGE_BYTES
+from app.queueing import QueueUnavailable
 from app.web.deps import get_session
 from app.web.templating import templates
 
@@ -36,7 +37,15 @@ async def upload(
         return templates.TemplateResponse(
             request, "upload.html", {"error": "The file is empty."}, status_code=422
         )
-    report = await run_in_threadpool(
-        accept_submission, request.app, session, raw, source=ReportSource.UPLOAD
-    )
+    try:
+        report = await run_in_threadpool(
+            accept_submission, request.app, session, raw, source=ReportSource.UPLOAD
+        )
+    except QueueUnavailable:
+        return templates.TemplateResponse(
+            request,
+            "upload.html",
+            {"error": "The file was stored but could not be queued. Please try again later."},
+            status_code=503,
+        )
     return RedirectResponse(f"/reports/{report.id}", status_code=303)

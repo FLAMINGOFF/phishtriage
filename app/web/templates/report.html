@@ -6,6 +6,7 @@
   <h1>{{ email.subject if email and email.subject else "(no subject)" }}</h1>
   <p>Report <code>{{ report.id }}</code> · {{ report.source.value }} · {{ report.status.value }}</p>
 </hgroup>
+{% if pending %}{% include "_status.html" %}{% endif %}
 {% if report.error %}<p class="error" role="alert">{{ report.error }}</p>{% endif %}
 {% if report.verdict %}
 <p class="verdict verdict-{{ report.verdict.value }}">
@@ -48,12 +49,27 @@
 
 <h2>Indicators</h2>
 {% if report.observables %}
-<table>
-  <thead><tr><th>Type</th><th>Value (defanged)</th></tr></thead>
+<table class="indicators">
+  <thead><tr><th>Type</th><th>Value (defanged)</th><th>Threat intelligence</th></tr></thead>
   <tbody>
-  {% for o in report.observables %}<tr><td>{{ o.type.value }}</td><td><code>{{ o.defanged|visible }}</code></td></tr>{% endfor %}
+  {% for o in report.observables %}
+  <tr>
+    <td>{{ o.type.value }}</td>
+    <td><code>{{ o.defanged|visible }}</code></td>
+    <td>
+      {% for r in o.intel_results if r.status.value != "skipped" %}
+      <span class="intel intel-{{ r.provider.value }} intel-{{ r.status.value }}">{{ provider_labels[r.provider.value] }}: {{ r.detail or r.status.value }}</span><br>
+      {% else %}-{% endfor %}
+    </td>
+  </tr>
+  {% endfor %}
   </tbody>
 </table>
+{% if skipped_lookups %}
+<p><small>Not looked up:
+  {% for label, reason, count in skipped_lookups %}{{ label }} ({{ reason }}) &times; {{ count }}{% if not loop.last %}; {% endif %}{% endfor %}
+</small></p>
+{% endif %}
 {% else %}<p>No indicators extracted.</p>{% endif %}
 
 <h2>Attachments</h2>

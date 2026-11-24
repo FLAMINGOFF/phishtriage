@@ -12,7 +12,8 @@ with explainable rules, replies to the reporter with a verdict, and gives SOC an
 console to review, re-classify and export IOCs.
 
 > **Status:** under active development. Done: M0 (skeleton), M1 (parsing and IOC
-> extraction), M2 (analyzers and scoring). See [PROGRESS.md](PROGRESS.md).
+> extraction), M2 (analyzers and scoring), M3 (queue, worker and threat intelligence).
+> See [PROGRESS.md](PROGRESS.md).
 
 ## Demo
 
@@ -83,6 +84,16 @@ maps to a verdict. Full rule table and details: [docs/scoring.md](docs/scoring.m
 Points live in `app/scoring/rules.yaml`, so tuning never needs a code change. Replies never
 call an email "safe".
 
+## Threat intelligence
+
+The worker looks up attachment hashes and URLs on VirusTotal, URLs and hosts on URLhaus,
+and the sender domain's registration date over RDAP, then runs the rules on those answers.
+Keys are optional: without them the lookups are recorded as `skipped` and everything else
+works. Answers are cached in Redis (VirusTotal 24 h, URLhaus 1 h), and VirusTotal is held
+to its free-tier limits by a token bucket shared by all workers (at most 4 requests in any
+60 seconds, proven with a fake clock in the tests) and a daily budget of 500. Details,
+statuses and settings: [docs/intel.md](docs/intel.md).
+
 ## Security design
 
 Every reported email is treated as attacker-controlled input. Highlights (full STRIDE model
@@ -90,6 +101,10 @@ in `docs/threat-model.md`, M6):
 
 - The server never visits links from emails and never renders their original HTML.
 - Attachments are never executed or uploaded anywhere; only their hashes are looked up.
+  URLs are looked up, never submitted for scanning.
+- The web process never parses email; the worker does. Its HTTP client can only reach the
+  fixed intel hosts (no redirects, HTTPS only), so email content cannot make it fetch
+  anything else.
 - Archives are listed, never extracted; strict size and nesting limits.
 - Secrets come only from environment variables; the policy file rejects unknown keys.
 - Containers run as an unprivileged user with a read-only root filesystem and no Linux
@@ -113,19 +128,25 @@ curl http://localhost:8000/readyz    # database and Redis checks
 | http://localhost:8000 | PhishTriage web (analyst console from M4) |
 | http://localhost:8025 | Mailpit: replies sent by PhishTriage |
 
-Try the parser on one of the synthetic sample emails:
+Try it with one of the synthetic sample emails:
 
 - Upload: open http://localhost:8000/upload and choose a file from `tests/fixtures/emails/`.
-- REST API: set `API_TOKEN` in `.env` (32+ characters), restart, then
+  The report page waits for the worker and shows the verdict, its evidence and the intel.
+- REST API: set `API_TOKEN` in `.env` (32+ characters), restart, then submit and wait for
+  the verdict (the script polls `GET /api/reports/{id}` until the worker is done):
 
   ```bash
-  curl -H "Authorization: Bearer $API_TOKEN" -H "Content-Type: message/rfc822" \
-       --data-binary @tests/fixtures/emails/02_html_link_mismatch_b64.eml \
-       http://localhost:8000/api/reports
+  API_TOKEN=... python3 scripts/submit_report.py \
+      tests/fixtures/emails/02_html_link_mismatch_b64.eml
   ```
 
-- Command line, without any server: `uv run python -m app.cli analyze
+  The API itself answers `202 Accepted` with the report ID; analysis runs in the worker.
+
+- Command line, without any server or network: `uv run python -m app.cli analyze
   tests/fixtures/emails/06_report_with_attached_original.eml --wrapper` prints JSON.
+- Threat intel: put `VT_API_KEY` and/or `URLHAUS_AUTH_KEY` in `.env` and restart the
+  worker (`docker compose up -d worker`). Demo samples use reserved domains, so their
+  lookups come back "not found"; that is expected.
 
 Sending a sample report by email (`scripts/send_sample.py`) arrives in M5.
 
@@ -134,7 +155,8 @@ Sending a sample report by email (`scripts/send_sample.py`) arrives in M5.
 ```bash
 uv sync                     # Python 3.12 + all dependencies from uv.lock
 uv run pre-commit install   # ruff, mypy, gitleaks on every commit
-uv run pytest               # tests never touch the network
+uv run pytest               # tests never touch the network (respx blocks it)
+uv run pytest -m live tests/live   # opt-in: real provider lookups, needs your keys
 uv run ruff check . && uv run ruff format --check . && uv run mypy app
 uv run python -m app.cli check-config
 uv run python scripts/generate_emails.py           # regenerate the sample emails

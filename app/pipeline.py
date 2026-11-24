@@ -1,14 +1,20 @@
-"""Report processing: from stored raw message to persisted email, attachments and IOCs.
+"""Report processing: from stored raw message to an explained, persisted verdict.
 
 ``submit`` stores a submission and creates a queued report; it is cheap and used by every
-intake channel. ``process`` does the actual work and is idempotent, so a retry after a
-crash starts from a clean slate instead of duplicating rows.
+intake channel. ``process`` does the actual work (in the worker) and is idempotent, so a
+retry after a crash starts from a clean slate instead of duplicating rows.
+
+Order of work for each reported email: parse, extract indicators, look them up (threat
+intel), run the rules on email + intel snapshot, score, then store everything in one
+transaction. All slow work (parsing, network lookups) happens before the first write, so
+no database transaction stays open while we wait for a provider.
 """
 
 from __future__ import annotations
 
 import logging
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -21,6 +27,9 @@ from app.db.models import (
     Attachment,
     Email,
     Finding,
+    IntelProvider,
+    IntelResultRecord,
+    IntelStatus,
     Observable,
     ObservableType,
     Report,
@@ -28,7 +37,8 @@ from app.db.models import (
     ReportStatus,
     utcnow,
 )
-from app.intel.models import EMPTY_SNAPSHOT, IntelSnapshot
+from app.intel.service import IntelLookup, IntelOutcome, NoIntel
+from app.parsing import iocs
 from app.parsing.eml import (
     DEFAULT_LIMITS,
     Limits,
@@ -37,7 +47,6 @@ from app.parsing.eml import (
     extract_originals,
 )
 from app.parsing.html import sanitize_html
-from app.parsing.iocs import extract_observables
 from app.storage import BlobStore
 
 logger = logging.getLogger(__name__)
@@ -107,14 +116,40 @@ def _child_of(report: Report) -> Report:
     )
 
 
+@dataclass(frozen=True)
+class PreparedEmail:
+    """Everything worked out for one reported email, before anything is written."""
+
+    parsed: ParsedEmail
+    observables: list[iocs.Observable]
+    intel: IntelOutcome
+    analysis: Analysis
+
+
+def prepare_email(
+    parsed: ParsedEmail,
+    policy: Policy,
+    intel: IntelLookup,
+    *,
+    now: datetime,
+    rules_file: Path | None = None,
+) -> PreparedEmail:
+    observables = iocs.extract_observables(parsed, own_domains=policy.org_domains)
+    # The sender is the attacker's only for messages we still have the headers of.
+    sender = parsed.from_addr if not parsed.forwarded_inline else None
+    outcome = intel.lookup(observables, sender.domain if sender and sender.domain else None)
+    analysis = analyze_email(parsed, policy, intel=outcome.snapshot, now=now, rules_file=rules_file)
+    return PreparedEmail(parsed, observables, outcome, analysis)
+
+
 def _persist_email(
     session: Session,
     store: BlobStore,
     report: Report,
-    parsed: ParsedEmail,
-    policy: Policy,
-    analysis: Analysis,
+    prepared: PreparedEmail,
+    now: datetime,
 ) -> None:
+    parsed, analysis = prepared.parsed, prepared.analysis
     blob = store.put(parsed.raw, "raw")
     report.email = Email(
         raw_path=blob.path,
@@ -150,14 +185,24 @@ def _persist_email(
                 storage_path=stored.path,
             )
         )
-    for observable in extract_observables(parsed, own_domains=policy.org_domains):
-        report.observables.append(
-            Observable(
-                type=ObservableType(observable.type),
-                value=observable.value,
-                defanged=observable.defanged[:4096],
-            )
+    for observable in prepared.observables:
+        row = Observable(
+            type=ObservableType(observable.type),
+            value=observable.value,
+            defanged=observable.defanged[:4096],
         )
+        for answer in prepared.intel.results.get((observable.type, observable.value), ()):
+            row.intel_results.append(
+                IntelResultRecord(
+                    provider=IntelProvider(answer.provider),
+                    status=IntelStatus(answer.status),
+                    malicious_count=answer.malicious_count,
+                    detail=answer.detail[:500] if answer.detail else None,
+                    raw=answer.raw,
+                    fetched_at=answer.fetched_at or now,
+                )
+            )
+        report.observables.append(row)
     result = analysis.result
     report.score = result.score
     report.verdict = result.verdict
@@ -179,21 +224,22 @@ def process(
     report_id: uuid.UUID,
     policy: Policy,
     *,
-    intel: IntelSnapshot = EMPTY_SNAPSHOT,
+    intel: IntelLookup | None = None,
     rules_file: Path | None = None,
 ) -> Report:
-    """Parse, analyze and score a submitted report. Returns the (first) report."""
+    """Parse, look up, analyze and score a submitted report. Returns the (first) report."""
     report = session.get(Report, report_id)
     if report is None:
         raise LookupError(f"report {report_id} not found")
     report.status = ReportStatus.ANALYZING
+    submission_path, source = report.submission_path, report.source
     session.commit()
 
     try:
-        if report.submission_path is None:
+        if submission_path is None:
             raise MessageRejected("the submitted message is no longer stored")
-        raw = store.read(report.submission_path)
-        intake = extract_originals(raw, is_report_wrapper=report.source is ReportSource.IMAP)
+        raw = store.read(submission_path)
+        intake = extract_originals(raw, is_report_wrapper=source is ReportSource.IMAP)
     except MessageRejected as exc:
         logger.info("report %s rejected: %s", report.id, exc.reason)
         _reset(session, report)
@@ -203,17 +249,22 @@ def process(
         session.commit()
         return report
 
+    now = utcnow()
+    lookup = intel or NoIntel()
+    prepared = [
+        prepare_email(original, policy, lookup, now=now, rules_file=rules_file)
+        for original in intake.originals
+    ]
+
     _reset(session, report)
     report.intake_mode = intake.mode
     targets = [report]
-    for _ in intake.originals[1:]:
+    for _ in prepared[1:]:
         child = _child_of(report)
         report.children.append(child)
         targets.append(child)
-    now = utcnow()
-    for target, original in zip(targets, intake.originals, strict=True):
-        analysis = analyze_email(original, policy, intel=intel, now=now, rules_file=rules_file)
-        _persist_email(session, store, target, original, policy, analysis)
+    for target, item in zip(targets, prepared, strict=True):
+        _persist_email(session, store, target, item, now)
         target.status = ReportStatus.DONE
         target.analyzed_at = utcnow()
     session.commit()

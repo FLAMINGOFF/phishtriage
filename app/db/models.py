@@ -78,6 +78,20 @@ class ObservableType(StrEnum):
     SHA256 = "sha256"
 
 
+class IntelProvider(StrEnum):
+    VIRUSTOTAL = "virustotal"
+    URLHAUS = "urlhaus"
+    RDAP = "rdap"
+
+
+class IntelStatus(StrEnum):
+    HIT = "hit"
+    CLEAN = "clean"
+    NOT_FOUND = "not_found"
+    SKIPPED = "skipped"
+    ERROR = "error"
+
+
 def _enum(enum: type[StrEnum], name: str) -> Enum:
     # Stored as VARCHAR + CHECK constraint rather than a native PostgreSQL ENUM type:
     # adding a value later is then an ordinary migration, not an ALTER TYPE dance.
@@ -215,6 +229,11 @@ class Observable(Base):
     defanged: Mapped[str] = mapped_column(String(4096))
 
     report: Mapped[Report] = relationship(back_populates="observables")
+    intel_results: Mapped[list[IntelResultRecord]] = relationship(
+        back_populates="observable",
+        cascade="all, delete-orphan",
+        order_by="IntelResultRecord.provider",
+    )
 
 
 class Finding(Base):
@@ -234,3 +253,23 @@ class Finding(Base):
     evidence: Mapped[list[Any]] = mapped_column(JSONType, default=list)
 
     report: Mapped[Report] = relationship(back_populates="findings")
+
+
+class IntelResultRecord(Base):
+    """One threat-intel provider's answer about one observable (see app/intel)."""
+
+    __tablename__ = "intel_results"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    observable_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("observables.id", ondelete="CASCADE"), index=True
+    )
+    provider: Mapped[IntelProvider] = mapped_column(_enum(IntelProvider, "intel_provider"))
+    status: Mapped[IntelStatus] = mapped_column(_enum(IntelStatus, "intel_status"), index=True)
+    malicious_count: Mapped[int | None] = mapped_column(Integer)
+    detail: Mapped[str | None] = mapped_column(String(500))  # e.g. "5/70 engines flag it"
+    raw: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)  # small fixed subset
+    # When the provider answered (an answer served from the cache keeps its original time).
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    observable: Mapped[Observable] = relationship(back_populates="intel_results")

@@ -1,0 +1,20 @@
+{
+  "description": "Curated subset of the IANA RDAP bootstrap registry for DNS (https://data.iana.org/rdap/dns.json). Only these servers are ever contacted. Refresh or extend with scripts/update_rdap_bootstrap.py and review the diff like code.",
+  "publication": "curated",
+  "services": [
+    [["com"], ["https://rdap.verisign.com/com/v1/"]],
+    [["net"], ["https://rdap.verisign.com/net/v1/"]],
+    [["org"], ["https://rdap.publicinterestregistry.org/rdap/"]],
+    [["info"], ["https://rdap.identitydigital.services/rdap/"]],
+    [["app", "dev", "page"], ["https://pubapi.registry.google/rdap/"]],
+    [["xyz"], ["https://rdap.centralnic.com/xyz/"]],
+    [["online"], ["https://rdap.centralnic.com/online/"]],
+    [["site"], ["https://rdap.centralnic.com/site/"]],
+    [["store"], ["https://rdap.centralnic.com/store/"]],
+    [["tech"], ["https://rdap.centralnic.com/tech/"]],
+    [["top"], ["https://rdap.zdnsgtld.com/top/"]],
+    [["shop"], ["https://rdap.gmoregistry.net/rdap/"]],
+    [["uk"], ["https://rdap.nominet.uk/uk/"]]
+  ],
+  "version": "1.0"
+}

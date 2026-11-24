@@ -200,6 +200,16 @@ class Settings(BaseSettings):
     # Threat-intel keys are optional: without them lookups are skipped, nothing breaks.
     vt_api_key: SecretStr | None = None
     urlhaus_auth_key: SecretStr | None = None
+    # VirusTotal's free API: 4 requests/minute, 500/day. A paid licence raises both.
+    vt_rate_per_minute: int = Field(default=4, ge=1, le=10_000)
+    vt_daily_budget: int = Field(default=500, ge=0)
+    # Fresh (uncached) VirusTotal lookups per report: hashes first, then URLs, then domains.
+    vt_max_lookups_per_report: int = Field(default=4, ge=0, le=100)
+    # How long a lookup may wait for a rate-limit slot before it is skipped.
+    intel_max_wait_seconds: float = Field(default=60.0, ge=0, le=600)
+    intel_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
+    # RDAP needs no key; it only contacts the servers listed in app/intel/rdap_bootstrap.json.
+    rdap_enabled: bool = True
 
     policy: Policy
 
