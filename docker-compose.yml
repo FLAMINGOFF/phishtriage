@@ -1,0 +1,155 @@
+# PhishTriage demo stack: `docker compose up`.
+#
+# Everything published is bound to 127.0.0.1 so the demo is not reachable from the LAN.
+# Secrets come from .env (optional for the demo; see .env.example).
+
+name: phishtriage
+
+x-app: &app
+  build: .
+  image: phishtriage:dev
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    DATABASE_URL: postgresql+psycopg://phishtriage:${POSTGRES_PASSWORD:-phishtriage}@db:5432/phishtriage
+    REDIS_URL: redis://redis:6379/0
+    IMAP_HOST: greenmail
+    IMAP_PORT: "3143"
+    IMAP_SSL: "false"
+    IMAP_USER: report-phishing@example.edu
+    IMAP_PASSWORD: ${IMAP_PASSWORD:-demo-mailbox-password}
+  volumes:
+    # Policy is mounted, so editing config/settings.yaml needs a restart, not a rebuild.
+    - ./config:/app/config:ro
+  # Hardening: immutable root filesystem, no Linux capabilities, no privilege escalation.
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+
+services:
+  web:
+    <<: *app
+    # Single node: the web container applies migrations before it starts serving.
+    command:
+      - sh
+      - -c
+      - >-
+        alembic upgrade head &&
+        exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000 --no-server-header
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.healthcheck", "web"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  worker:
+    <<: *app
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      web:
+        condition: service_healthy  # i.e. migrations have run
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.healthcheck", "worker"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 15s
+
+  poller:
+    <<: *app
+    command: ["python", "-m", "app.ingest.imap_poller"]
+    depends_on:
+      web:
+        condition: service_healthy
+      greenmail:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.healthcheck", "poller"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
+
+  db:
+    image: postgres:16.16-alpine
+    environment:
+      POSTGRES_DB: phishtriage
+      POSTGRES_USER: phishtriage
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-phishtriage}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "phishtriage", "-d", "phishtriage"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4.12-alpine
+    # Append-only file: queued reports survive a Redis restart.
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # Local report mailbox (dev/demo only). Employees "forward as attachment" to
+  # report-phishing@example.edu via SMTP :3025; the poller reads it via IMAP :3143.
+  greenmail:
+    image: greenmail/standalone:2.1.15
+    environment:
+      GREENMAIL_OPTS: >-
+        -Dgreenmail.setup.test.smtp -Dgreenmail.setup.test.imap
+        -Dgreenmail.hostname=0.0.0.0
+        -Dgreenmail.users=report-phishing:${IMAP_PASSWORD:-demo-mailbox-password}@example.edu
+        -Dgreenmail.users.login=email
+    ports:
+      - "127.0.0.1:3025:3025"
+      - "127.0.0.1:3143:3143"
+    healthcheck:
+      # The image has no curl; bash can open a TCP socket and read the IMAP greeting.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/3143 && read -r -t 3 line <&3 && [[ $$line == '* OK'* ]]"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  # Catches every reply PhishTriage sends (dev/demo only). Web UI: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.34.0
+    environment:
+      MP_MAX_MESSAGES: "5000"
+    ports:
+      - "127.0.0.1:8025:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
