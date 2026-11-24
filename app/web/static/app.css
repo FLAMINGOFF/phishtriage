@@ -1,0 +1,7 @@
+/* PhishTriage console styles (on top of Pico CSS). No inline styles anywhere: the CSP
+   only allows stylesheets from our own origin. */
+.brand { text-decoration: none; }
+.error { color: var(--pico-del-color); }
+.notice { border-left: 4px solid var(--pico-primary); padding-left: 0.75rem; }
+pre.body { white-space: pre-wrap; word-break: break-word; max-height: 40rem; overflow: auto; }
+table code { word-break: break-all; }

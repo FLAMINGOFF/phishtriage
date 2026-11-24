@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Report · PhishTriage{% endblock %}
+{% block content %}
+{% set email = report.email %}
+<hgroup>
+  <h1>{{ email.subject if email and email.subject else "(no subject)" }}</h1>
+  <p>Report <code>{{ report.id }}</code> · {{ report.source.value }} · {{ report.status.value }}</p>
+</hgroup>
+{% if report.error %}<p class="error" role="alert">{{ report.error }}</p>{% endif %}
+{% if report.children %}
+<p>This submission contained {{ report.children|length + 1 }} emails:
+  {% for child in report.children %}<a href="/reports/{{ child.id }}">{{ child.id }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+</p>
+{% endif %}
+{% if report.parent_id %}<p>Part of submission <a href="/reports/{{ report.parent_id }}">{{ report.parent_id }}</a>.</p>{% endif %}
+{% if email %}
+{% if email.forwarded_inline %}
+<p class="notice">Forwarded inline: the original headers are lost, so only the body and links were analysed.</p>
+{% endif %}
+<table>
+  <tr><th scope="row">From</th><td>{{ email.from_display|visible }} &lt;{{ email.from_addr|visible }}&gt;</td></tr>
+  <tr><th scope="row">Reply-To</th><td>{{ email.reply_to|visible if email.reply_to else "-" }}</td></tr>
+  <tr><th scope="row">Return-Path</th><td>{{ email.return_path|visible if email.return_path else "-" }}</td></tr>
+  <tr><th scope="row">Sent</th><td>{{ email.sent_at|timestamp }}</td></tr>
+  <tr><th scope="row">Message-ID</th><td><code>{{ email.message_id or "-" }}</code></td></tr>
+</table>
+
+<h2>Indicators</h2>
+{% if report.observables %}
+<table>
+  <thead><tr><th>Type</th><th>Value (defanged)</th></tr></thead>
+  <tbody>
+  {% for o in report.observables %}<tr><td>{{ o.type.value }}</td><td><code>{{ o.defanged|visible }}</code></td></tr>{% endfor %}
+  </tbody>
+</table>
+{% else %}<p>No indicators extracted.</p>{% endif %}
+
+<h2>Attachments</h2>
+{% if report.attachments %}
+<table>
+  <thead><tr><th>File name</th><th>Declared</th><th>Detected</th><th>Size</th><th>SHA-256</th></tr></thead>
+  <tbody>
+  {% for a in report.attachments %}
+  <tr><td>{{ a.filename|visible }}</td><td>{{ a.declared_type }}</td><td>{{ a.detected_type or "-" }}</td><td>{{ a.size|filesize }}</td><td><code>{{ a.sha256 }}</code></td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p>No attachments.</p>{% endif %}
+
+<h2>Body (plain text)</h2>
+<pre class="body">{{ email.body_text }}</pre>
+{% endif %}
+{% endblock %}

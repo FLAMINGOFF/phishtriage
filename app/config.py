@@ -189,6 +189,12 @@ class Settings(BaseSettings):
     imap_mailbox: str = "INBOX"
     poll_interval_seconds: int = Field(default=30, ge=5, le=3600)
 
+    # Raw messages and attachments (a dedicated volume in Docker, never the database).
+    storage_dir: Path = PROJECT_ROOT / "data" / "storage"
+
+    # Bearer token for POST /api/reports. Unset means the API is disabled.
+    api_token: SecretStr | None = None
+
     # Threat-intel keys are optional: without them lookups are skipped, nothing breaks.
     vt_api_key: SecretStr | None = None
     urlhaus_auth_key: SecretStr | None = None
@@ -206,6 +212,9 @@ class Settings(BaseSettings):
             problems.append(f"SECRET_KEY must be a random value of {MIN_SECRET_KEY_LENGTH}+ chars")
         if not self.imap_ssl:
             problems.append("IMAP_SSL must be true (the mailbox password would travel in clear)")
+        token = self.api_token.get_secret_value() if self.api_token else None
+        if token is not None and len(token) < MIN_SECRET_KEY_LENGTH:
+            problems.append(f"API_TOKEN must be {MIN_SECRET_KEY_LENGTH}+ random characters")
         if problems:
             raise ValueError("unsafe production configuration: " + "; ".join(problems))
         return self
