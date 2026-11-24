@@ -61,7 +61,12 @@ def run_report(ctx: WorkerContext, report_id: uuid.UUID) -> ReportStatus:
             rules_file=ctx.settings.rules_file,
         )
         if report.status is ReportStatus.DONE:
-            notify_reporter(session, report, ctx.settings)
+            try:
+                notify_reporter(session, report, ctx.settings)
+            except Exception:
+                # The analysis is stored; a reply problem must not make RQ redo it.
+                logger.exception("report %s: reply step failed", report.id)
+                session.rollback()
         return report.status
 
 

@@ -1,0 +1,26 @@
+Hello,
+
+thank you for reporting this email. Our automatic analysis is complete.
+{% for item in items %}
+
+Reported email: "{{ item.subject }}"
+Result: {{ item.label }} (score {{ item.score }})
+
+{{ item.advice }}
+{% if item.reasons %}
+
+What we found:
+{% for reason in item.reasons %}
+  - {{ reason }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% if inline %}
+
+{{ inline_hint }}
+{% endif %}
+
+A security analyst may review your report and contact you.
+
+Reference: {{ reference }}
+This is an automatic reply from PhishTriage.

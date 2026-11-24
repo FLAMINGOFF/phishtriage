@@ -18,10 +18,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.config import Settings
-from app.db.models import Report, ReportSource
+from app.db.models import Email, Report, ReportSource
 from app.ingest.submission import accept_submission
 from app.parsing.eml import MAX_MESSAGE_BYTES
 from app.queueing import QueueUnavailable
@@ -31,6 +32,7 @@ router = APIRouter(prefix="/api", tags=["api"])
 
 ACCEPTED_TYPES = {"message/rfc822", "application/octet-stream"}
 _EMAIL = re.compile(r"^[^@\s<>]{1,64}@[^@\s<>]{1,255}$")
+MAX_FOUND = 20
 
 
 def require_api_token(
@@ -82,6 +84,9 @@ class ReportOut(BaseModel):
     verdict: str | None
     analyst_verdict: str | None
     error: str | None
+    reporter_email: str | None
+    reply_status: str | None
+    replied_at: datetime | None
     subject: str | None
     from_addr: str | None
     forwarded_inline: bool | None
@@ -104,6 +109,9 @@ class ReportOut(BaseModel):
             verdict=report.verdict.value if report.verdict else None,
             analyst_verdict=report.analyst_verdict.value if report.analyst_verdict else None,
             error=report.error,
+            reporter_email=report.reporter_email,
+            reply_status=report.reply_status,
+            replied_at=report.replied_at,
             subject=email.subject if email else None,
             from_addr=email.from_addr if email else None,
             forwarded_inline=email.forwarded_inline if email else None,
@@ -163,6 +171,23 @@ async def create_report(
         raise HTTPException(503, "stored, but the queue is unavailable; try again later") from exc
     response.headers["Location"] = f"/api/reports/{report.id}"
     return ReportOut.of(report)
+
+
+@router.get("/reports", dependencies=[Depends(require_api_token)])
+def find_reports(
+    session: Annotated[Session, Depends(get_session)],
+    message_id: Annotated[str, Query(min_length=3, max_length=998)],
+) -> list[ReportOut]:
+    """Reports for the email with this Message-ID: the reported original's, or (for the
+    report mailbox) the reporter's own email's. Newest first, at most 20."""
+    reports = session.scalars(
+        select(Report)
+        .outerjoin(Email, Email.report_id == Report.id)
+        .where(or_(Report.outer_message_id == message_id, Email.message_id == message_id))
+        .order_by(Report.received_at.desc(), Report.id)
+        .limit(MAX_FOUND)
+    ).all()
+    return [ReportOut.of(report) for report in reports]
 
 
 @router.get("/reports/{report_id}", dependencies=[Depends(require_api_token)])

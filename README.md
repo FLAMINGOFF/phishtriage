@@ -13,7 +13,8 @@ console to review, re-classify and export IOCs.
 
 > **Status:** under active development. Done: M0 (skeleton), M1 (parsing and IOC
 > extraction), M2 (analyzers and scoring), M3 (queue, worker and threat intelligence),
-> M4 (analyst console, v0.1.0). See [PROGRESS.md](PROGRESS.md).
+> M4 (analyst console, v0.1.0), M5 (report mailbox and verdict replies). See
+> [PROGRESS.md](PROGRESS.md).
 
 ## Demo
 
@@ -106,6 +107,18 @@ attachments as ZIPs encrypted with the password `infected`, and export indicator
 or as a STIX 2.1 bundle. Logins, verdict changes, notes, downloads and exports are written
 to an audit log that administrators can browse. Details: [docs/console.md](docs/console.md).
 
+## Report mailbox and replies
+
+Employees forward a suspicious email, as an attachment, to the report mailbox. The poller
+fetches new messages over IMAP (reading them without marking them as read), skips any it
+has seen before by Message-ID, queues them and moves them to a `Processed` folder. Once the
+worker has a verdict it replies to the reporter in plain text: the verdict, what to do,
+and the main reasons. The reply goes only to addresses in the organisation's own domains,
+and only if the organisation's mail server recorded a DMARC pass for the report, so
+nobody can make PhishTriage mail a third party; each reporter gets at most 20 replies an
+hour. An inline forward is analysed too, and its reply asks for "Forward as attachment"
+next time. Details: [docs/mailbox.md](docs/mailbox.md).
+
 ## Security design
 
 Every reported email is treated as attacker-controlled input. Highlights (full STRIDE model
@@ -118,6 +131,9 @@ in `docs/threat-model.md`, M6):
   fixed intel hosts (no redirects, HTTPS only), so email content cannot make it fetch
   anything else.
 - Archives are listed, never extracted; strict size and nesting limits.
+- Verdict replies go only to the organisation's own, DMARC-verified reporters (at most 20
+  an hour each), are plain text from a fixed template, and carry the reported subject
+  only defanged, so the platform cannot be used to send spam or links to anyone.
 - Console: argon2id passwords, server-side sessions with HttpOnly/SameSite cookies, CSRF
   tokens on every form, account lock after 5 failed logins in 15 minutes, a strict CSP
   without inline script, and every attacker-controlled string rendered escaped.
@@ -148,6 +164,19 @@ The last command asks for a password (12+ characters) for the first console acco
 
 Try it with one of the synthetic sample emails:
 
+- Email, the way employees report: send every sample in `samples/` to the report mailbox
+  (GreenMail) and wait for PhishTriage's replies, which land in Mailpit:
+
+  ```bash
+  python3 scripts/send_sample.py --wait 90
+  # sent credential-phish.eml as <...@example.edu>
+  # ...
+  # reply for credential-phish.eml: [PhishTriage] Malicious: Action required: verify your account
+  ```
+
+  Open http://localhost:8025 to read the replies and http://localhost:8000/reports to see
+  the reports. `--from outsider@external.example` shows that an external reporter gets
+  no reply.
 - Upload: log in, open http://localhost:8000/upload and choose a file from
   `tests/fixtures/emails/`. The report page waits for the worker and shows the verdict,
   its evidence and the intel; the queue at http://localhost:8000/reports lists them all.
@@ -167,8 +196,6 @@ Try it with one of the synthetic sample emails:
   worker (`docker compose up -d worker`). Demo samples use reserved domains, so their
   lookups come back "not found"; that is expected.
 
-Sending a sample report by email (`scripts/send_sample.py`) arrives in M5.
-
 ### Development
 
 ```bash
@@ -176,6 +203,8 @@ uv sync                     # Python 3.12 + all dependencies from uv.lock
 uv run pre-commit install   # ruff, mypy, gitleaks on every commit
 uv run pytest               # tests never touch the network (respx blocks it)
 uv run pytest -m live tests/live   # opt-in: real provider lookups, needs your keys
+# opt-in end to end against `API_TOKEN=... docker compose up` (see docs/mailbox.md):
+PHISHTRIAGE_BASE_URL=http://127.0.0.1:8000 PHISHTRIAGE_API_TOKEN=... uv run pytest -m integration tests/integration
 uv run ruff check . && uv run ruff format --check . && uv run mypy app
 uv run python -m app.cli check-config
 uv run python scripts/generate_emails.py           # regenerate the sample emails

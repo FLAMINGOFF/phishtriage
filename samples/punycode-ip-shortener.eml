@@ -1,0 +1,27 @@
+Received: from smtp.freemail.example (smtp.freemail.example [192.0.2.200])
+	by mx.example.edu (Postfix) with ESMTPS id 1Pun
+	for <alice@example.edu>; Tue, 24 Nov 2026 03:00:00 +0000
+Authentication-Results: mx.example.edu;
+	spf=pass smtp.mailfrom=freemail.example;
+	dkim=pass header.d=freemail.example;
+	dmarc=pass header.from=freemail.example
+From: Payroll Office <payroll.office.2026@freemail.example>
+Reply-To: Payroll <payroll-desk@reply.test>
+To: alice@example.edu
+Subject: Salary payment on hold
+Date: Tue, 24 Nov 2026 02:59:58 +0000
+Message-ID: <pay-11@freemail.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+Hello,
+
+Payroll needs you to confirm your bank details before Friday or your salary
+payment will be delayed. Use one of these links:
+
+http://exаmple.example/payroll
+http://3405803786/payroll/form
+https://short.example/s4l4ry
+
+Payroll Office

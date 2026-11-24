@@ -136,6 +136,11 @@ class Report(Base):
     analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error: Mapped[str | None] = mapped_column(Text)
+    # Mailbox reports (M5): the trusted DMARC result for the reporter's own address, and
+    # what happened to the automatic reply ("sent", or why it was not sent).
+    reporter_dmarc: Mapped[str | None] = mapped_column(String(16))
+    reply_status: Mapped[str | None] = mapped_column(String(200))
+    replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
 
     # The message as it was submitted (for IMAP: the reporter's wrapper message).
     submission_path: Mapped[str | None] = mapped_column(String(255))

@@ -38,6 +38,7 @@ from app.db.models import (
     utcnow,
 )
 from app.intel.service import IntelLookup, IntelOutcome, NoIntel
+from app.notify.reply import reporter_dmarc
 from app.parsing import iocs
 from app.parsing.eml import (
     DEFAULT_LIMITS,
@@ -106,6 +107,7 @@ def _child_of(report: Report) -> Report:
         parent_id=report.id,
         source=report.source,
         reporter_email=report.reporter_email,
+        reporter_dmarc=report.reporter_dmarc,
         received_at=report.received_at,
         status=ReportStatus.ANALYZING,
         intake_mode=report.intake_mode,
@@ -258,6 +260,12 @@ def process(
 
     _reset(session, report)
     report.intake_mode = intake.mode
+    if source is ReportSource.IMAP:
+        # The report mailbox: the outer message is the reporter's own email. Who sent it,
+        # and whether our mail server vouches for that (DMARC), decides about the reply.
+        sender = intake.outer.from_addr
+        report.reporter_email = sender.address.lower()[:320] if sender else None
+        report.reporter_dmarc = reporter_dmarc(intake.outer, policy)
     targets = [report]
     for _ in prepared[1:]:
         child = _child_of(report)

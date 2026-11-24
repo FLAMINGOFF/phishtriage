@@ -273,3 +273,21 @@ def test_docs_only_in_dev(app_factory: Callable[..., FastAPI]) -> None:
     )
     assert prod.get("/docs").status_code == 404
     assert prod.get("/openapi.json").status_code == 404
+
+
+def test_api_finds_reports_by_message_id(client: TestClient, fixture_bytes: Loader) -> None:
+    from email import message_from_bytes
+
+    created = client.post(
+        "/api/reports", content=fixture_bytes("02"), headers={**AUTH, **RFC822}
+    ).json()
+    report = client.get(f"/api/reports/{created['id']}", headers=AUTH).json()
+    assert (report["reply_status"], report["replied_at"]) == (None, None)
+    found = client.get("/api/reports", params={"message_id": "<nothing@example.edu>"}, headers=AUTH)
+    assert found.status_code == 200
+    assert found.json() == []
+    original_id = message_from_bytes(fixture_bytes("02"))["Message-ID"]
+    found = client.get("/api/reports", params={"message_id": original_id}, headers=AUTH).json()
+    assert [r["id"] for r in found] == [created["id"]]
+    assert client.get("/api/reports", params={"message_id": original_id}).status_code == 401
+    assert client.get("/api/reports", headers=AUTH).status_code == 422

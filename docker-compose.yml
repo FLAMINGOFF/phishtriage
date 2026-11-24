@@ -19,6 +19,9 @@ x-app: &app
     IMAP_SSL: "false"
     IMAP_USER: report-phishing@example.edu
     IMAP_PASSWORD: ${IMAP_PASSWORD:-demo-mailbox-password}
+    # Replies go to Mailpit, which catches every message (http://localhost:8025).
+    SMTP_HOST: mailpit
+    SMTP_PORT: "1025"
     API_TOKEN: ${API_TOKEN:-}  # empty: the REST API is off
     # The demo console is plain http on localhost, where a Secure cookie would never be
     # sent back. Production (APP_ENV=prod) refuses to start with this set to false.
@@ -70,6 +73,8 @@ services:
         condition: service_healthy  # i.e. migrations have run
       redis:
         condition: service_healthy
+      mailpit:
+        condition: service_healthy  # where replies go
     healthcheck:
       test: ["CMD", "python", "-m", "app.healthcheck", "worker"]
       interval: 15s

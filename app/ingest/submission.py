@@ -20,25 +20,32 @@ from app.storage import BlobStore
 logger = logging.getLogger(__name__)
 
 
-def accept_submission(
-    app: FastAPI,
+def queue_submission(
     session: Session,
+    store: BlobStore,
+    enqueue: Enqueue,
     raw: bytes,
     *,
     source: ReportSource,
     reporter_email: str | None = None,
+    outer_message_id: str | None = None,
     uploaded_by: User | None = None,
 ) -> Report:
     """Store the message, create a queued report and hand it to the worker.
 
-    The web process never parses the email: it only stores the bytes and queues the ID.
-    If the queue is down the report is kept but marked failed (it can be re-queued with
+    Intake never parses the email: it only stores the bytes and queues the ID. If the
+    queue is down the report is kept but marked failed (it can be re-queued with
     ``python -m app.cli requeue``), and :class:`QueueUnavailable` is raised. An upload
     from the console is written to the audit log together with the report.
     """
-    store: BlobStore = app.state.store
-    enqueue: Enqueue = app.state.enqueue
-    report = submit(session, store, raw, source=source, reporter_email=reporter_email)
+    report = submit(
+        session,
+        store,
+        raw,
+        source=source,
+        reporter_email=reporter_email,
+        outer_message_id=outer_message_id,
+    )
     if uploaded_by is not None:
         audit.record(
             session,
@@ -58,6 +65,27 @@ def accept_submission(
         session.commit()
         raise
     return report
+
+
+def accept_submission(
+    app: FastAPI,
+    session: Session,
+    raw: bytes,
+    *,
+    source: ReportSource,
+    reporter_email: str | None = None,
+    uploaded_by: User | None = None,
+) -> Report:
+    """:func:`queue_submission` with the web application's blob store and queue."""
+    return queue_submission(
+        session,
+        app.state.store,
+        app.state.enqueue,
+        raw,
+        source=source,
+        reporter_email=reporter_email,
+        uploaded_by=uploaded_by,
+    )
 
 
 def requeue_reports(
