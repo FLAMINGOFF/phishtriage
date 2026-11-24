@@ -10,7 +10,7 @@
 PhishTriage 自动解析、分析、查询威胁情报，用可解释的规则打分，回信告诉上报人结果；
 SOC 分析员在 Web 后台复核、改判定、导出 IOC。
 
-> **状态：** 开发中，当前里程碑 M0（项目骨架）。进度见 [PROGRESS.md](PROGRESS.md)。
+> **状态：** 开发中。已完成 M0（项目骨架）、M1（邮件解析与 IOC 提取）。进度见 [PROGRESS.md](PROGRESS.md)。
 
 ## 演示
 
@@ -96,7 +96,21 @@ curl http://localhost:8000/readyz    # 检查数据库和 Redis
 | http://localhost:8000 | PhishTriage Web（M4 起是分析员后台） |
 | http://localhost:8025 | Mailpit：查看 PhishTriage 发出的回信 |
 
-发送样例上报的脚本（`scripts/send_sample.py`）在 M5 加入。
+用合成样例邮件试一下解析：
+
+- 网页上传：打开 http://localhost:8000/upload ，选择 `tests/fixtures/emails/` 里的任意一封。
+- REST API：在 `.env` 里设置 `API_TOKEN`（至少 32 个字符），重启后运行
+
+  ```bash
+  curl -H "Authorization: Bearer $API_TOKEN" -H "Content-Type: message/rfc822" \
+       --data-binary @tests/fixtures/emails/02_html_link_mismatch_b64.eml \
+       http://localhost:8000/api/reports
+  ```
+
+- 命令行（不需要启动服务）：`uv run python -m app.cli analyze
+  tests/fixtures/emails/06_report_with_attached_original.eml --wrapper` 输出 JSON。
+
+通过邮件发送样例上报的脚本（`scripts/send_sample.py`）在 M5 加入。
 
 ### 本地开发
 
@@ -106,7 +120,16 @@ uv run pre-commit install   # 每次提交自动跑 ruff、mypy、gitleaks
 uv run pytest               # 测试从不联网
 uv run ruff check . && uv run ruff format --check . && uv run mypy app
 uv run python -m app.cli check-config
+uv run python scripts/generate_emails.py           # 重新生成样例邮件
+UPDATE_SNAPSHOTS=1 uv run pytest tests/unit/test_snapshots.py   # 改了解析逻辑之后更新快照
+TEST_DATABASE_URL=postgresql+psycopg://user:pass@localhost/test uv run pytest  # 在 PostgreSQL 上跑
 ```
+
+`tests/fixtures/emails/` 里的 14 封样例邮件由 `scripts/generate_emails.py` 生成，只用保留域名
+（`example.com`、`example.edu`、`.example`、`.test`）。覆盖 quoted-printable 和 base64 正文、
+GBK 和 ISO-2022-JP、格式错误的邮件头、以 `message/rfc822` 或 `.eml` 文件附带的原始邮件、
+内联转发、仿冒域名和 punycode、数字 IP 主机、短链接、双扩展名、文件名里的从右到左覆盖字符，
+以及伪造的认证结果头。
 
 ## 评估
 
