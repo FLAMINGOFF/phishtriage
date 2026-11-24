@@ -6,12 +6,15 @@ attacker-controlled and are only ever rendered as text.
 
 from __future__ import annotations
 
+import json
 import unicodedata
 from datetime import datetime
 from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
+
+from app.web.deps import template_context
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
@@ -48,6 +51,12 @@ def filesize(value: int | None) -> str:
     return f"{value} B"  # pragma: no cover
 
 
+def shortjson(value: object, limit: int = 300) -> str:
+    """Compact one-line JSON for audit details (escaped by the template like any text)."""
+    text = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+    return text if len(text) <= limit else text[: limit - 1] + "\u2026"
+
+
 def build_templates() -> Jinja2Templates:
     env = Environment(
         loader=FileSystemLoader(TEMPLATES_DIR),
@@ -59,7 +68,8 @@ def build_templates() -> Jinja2Templates:
     env.filters["visible"] = visible
     env.filters["timestamp"] = timestamp
     env.filters["filesize"] = filesize
-    return Jinja2Templates(env=env)
+    env.filters["shortjson"] = shortjson
+    return Jinja2Templates(env=env, context_processors=[template_context])
 
 
 templates = build_templates()

@@ -1,34 +1,86 @@
 {% extends "base.html" %}
+{% from "_macros.html" import verdict_badge %}
 {% block title %}Report · PhishTriage{% endblock %}
 {% block content %}
 {% set email = report.email %}
 <hgroup>
-  <h1>{{ email.subject if email and email.subject else "(no subject)" }}</h1>
-  <p>Report <code>{{ report.id }}</code> · {{ report.source.value }} · {{ report.status.value }}</p>
+  <h1>{{ email.subject|visible if email and email.subject else "(no subject)" }}</h1>
+  <p>Report <code>{{ report.id }}</code> · {{ report.source.value }} · received {{ report.received_at|timestamp }}
+    {% if report.reporter_email %} · reported by {{ report.reporter_email|visible }}{% endif %} · {{ report.status.value }}</p>
 </hgroup>
 {% if pending %}{% include "_status.html" %}{% endif %}
 {% if report.error %}<p class="error" role="alert">{{ report.error }}</p>{% endif %}
-{% if report.verdict %}
-<p class="verdict verdict-{{ report.verdict.value }}">
-  <strong>{{ verdict_labels[report.verdict.value] }}</strong> · score {{ report.score }}
+
+{% set final = report.analyst_verdict or report.verdict %}
+{% if final %}
+<p class="verdict verdict-{{ final.value }}">
+  <strong>{{ verdict_labels[final.value] }}</strong>
+  {% if report.analyst_verdict %}
+  · set by an analyst{% if report.verdict %} (automatic: {{ verdict_labels[report.verdict.value] }}, score {{ report.score }}){% endif %}
+  {% else %}
+  · automatic, score {{ report.score }}
+  {% endif %}
 </p>
 {% endif %}
+
 {% if report.children %}
 <p>This submission contained {{ report.children|length + 1 }} emails:
   {% for child in report.children %}<a href="/reports/{{ child.id }}">{{ child.id }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
 </p>
 {% endif %}
 {% if report.parent_id %}<p>Part of submission <a href="/reports/{{ report.parent_id }}">{{ report.parent_id }}</a>.</p>{% endif %}
+
+<section id="review" class="review">
+  <h2>Review</h2>
+  <div class="grid">
+    {% if report.status.value == "done" %}
+    <form method="post" action="/reports/{{ report.id }}/verdict">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Analyst verdict
+        <select name="verdict">
+          <option value="">Automatic{% if report.verdict %} ({{ verdict_labels[report.verdict.value] }}){% endif %}</option>
+          {% for v in verdicts %}<option value="{{ v.value }}"{% if report.analyst_verdict == v %} selected{% endif %}>{{ verdict_labels[v.value] }}</option>{% endfor %}
+        </select>
+      </label>
+      <button type="submit">Save verdict</button>
+      <small>The automatic score is kept; changes are written to the audit log.</small>
+    </form>
+    {% endif %}
+    <form method="post" action="/reports/{{ report.id }}/notes">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Note
+        <textarea name="text" rows="3" maxlength="{{ max_note_length }}" required></textarea>
+      </label>
+      <button type="submit" class="secondary">Add note</button>
+    </form>
+  </div>
+  <div class="actions">
+    {% if report.status.value == "done" %}
+    <a href="/reports/{{ report.id }}/iocs.csv" role="button" class="outline">Indicators as CSV</a>
+    <a href="/reports/{{ report.id }}/iocs.stix.json" role="button" class="outline">Indicators as STIX 2.1</a>
+    {% endif %}
+    {% if can_requeue %}
+    <form method="post" action="/reports/{{ report.id }}/requeue" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="outline secondary">Analyse again</button>
+    </form>
+    {% endif %}
+  </div>
+</section>
+
 {% if email %}
 {% if email.forwarded_inline %}
 <p class="notice">Forwarded inline: the original headers are lost, so only the body and links were analysed.</p>
 {% endif %}
+<h2>Summary</h2>
 <table>
-  <tr><th scope="row">From</th><td>{{ email.from_display|visible }} &lt;{{ email.from_addr|visible }}&gt;</td></tr>
+  <tr><th scope="row">From</th><td>{{ email.from_display|visible if email.from_display else "" }} &lt;{{ email.from_addr|visible if email.from_addr else "-" }}&gt;</td></tr>
   <tr><th scope="row">Reply-To</th><td>{{ email.reply_to|visible if email.reply_to else "-" }}</td></tr>
   <tr><th scope="row">Return-Path</th><td>{{ email.return_path|visible if email.return_path else "-" }}</td></tr>
+  <tr><th scope="row">To</th><td>{{ email.to_addrs|join(", ")|visible if email.to_addrs else "-" }}</td></tr>
   <tr><th scope="row">Sent</th><td>{{ email.sent_at|timestamp }}</td></tr>
-  <tr><th scope="row">Message-ID</th><td><code>{{ email.message_id or "-" }}</code></td></tr>
+  <tr><th scope="row">Message-ID</th><td><code>{{ email.message_id|visible if email.message_id else "-" }}</code></td></tr>
+  <tr><th scope="row">SHA-256</th><td><code>{{ email.raw_sha256 }}</code> ({{ email.size|filesize }})</td></tr>
 </table>
 
 <h2>Why</h2>
@@ -49,6 +101,7 @@
 
 <h2>Indicators</h2>
 {% if report.observables %}
+<div class="overflow-auto">
 <table class="indicators">
   <thead><tr><th>Type</th><th>Value (defanged)</th><th>Threat intelligence</th></tr></thead>
   <tbody>
@@ -65,6 +118,7 @@
   {% endfor %}
   </tbody>
 </table>
+</div>
 {% if skipped_lookups %}
 <p><small>Not looked up:
   {% for label, reason, count in skipped_lookups %}{{ label }} ({{ reason }}) &times; {{ count }}{% if not loop.last %}; {% endif %}{% endfor %}
@@ -74,17 +128,127 @@
 
 <h2>Attachments</h2>
 {% if report.attachments %}
-<table>
-  <thead><tr><th>File name</th><th>Declared</th><th>Detected</th><th>Size</th><th>SHA-256</th></tr></thead>
+<div class="overflow-auto">
+<table class="attachments">
+  <thead><tr><th>File name</th><th>Declared</th><th>Detected</th><th>Size</th><th>SHA-256</th><th>Download</th></tr></thead>
   <tbody>
   {% for a in report.attachments %}
-  <tr><td>{{ a.filename|visible }}</td><td>{{ a.declared_type }}</td><td>{{ a.detected_type or "-" }}</td><td>{{ a.size|filesize }}</td><td><code>{{ a.sha256 }}</code></td></tr>
+  <tr>
+    <td>{{ a.filename|visible }}{% if a.has_macros %} <span class="badge badge-malicious">macros</span>{% endif %}{% if a.is_encrypted %} <span class="badge badge-suspicious">encrypted</span>{% endif %}</td>
+    <td>{{ a.declared_type }}</td>
+    <td>{{ a.detected_type or "-" }}</td>
+    <td>{{ a.size|filesize }}</td>
+    <td><code>{{ a.sha256 }}</code></td>
+    <td>{% if a.storage_path %}<a href="/reports/{{ report.id }}/attachments/{{ a.id }}" download>ZIP</a>{% else %}<span class="muted">deleted</span>{% endif %}</td>
+  </tr>
   {% endfor %}
   </tbody>
 </table>
+</div>
+<p><small>Downloads are ZIP archives encrypted with the password <code>{{ zip_password }}</code>, so the file cannot be opened by accident. Open them only in an analysis VM. Every download is written to the audit log.</small></p>
 {% else %}<p>No attachments.</p>{% endif %}
 
-<h2>Body (plain text)</h2>
-<pre class="body">{{ email.body_text }}</pre>
+<h2>Authentication results</h2>
+{% if email.auth_results %}
+<div class="overflow-auto">
+<table class="auth">
+  <thead><tr><th>Checked by</th><th>Method</th><th>Result</th><th>Details</th></tr></thead>
+  <tbody>
+  {% for header in email.auth_results %}
+  {% set trusted = header.authserv_id|lower in trusted_authserv_ids %}
+  {% for m in header.results %}
+  <tr>
+    <td><code>{{ header.authserv_id|visible }}</code>{% if loop.first %} {% if trusted %}<span class="badge badge-no_issues">trusted</span>{% else %}<span class="badge">not trusted</span>{% endif %}{% endif %}</td>
+    <td>{{ m.method }}</td>
+    <td><span class="authres authres-{{ m.result }}">{{ m.result }}</span></td>
+    <td><small>{% for k, v in m.properties.items() %}{{ k }}={{ v|visible }} {% endfor %}{% if m.reason %}({{ m.reason|visible }}){% endif %}</small></td>
+  </tr>
+  {% endfor %}
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p><small>Only results added by our own mail servers (trusted authserv-id) count: anyone can write this header into a message.</small></p>
+{% else %}<p>No Authentication-Results header.</p>{% endif %}
+
+<h2>Received chain</h2>
+{% if email.received_hops %}
+<div class="overflow-auto">
+<table class="received">
+  <thead><tr><th>#</th><th>From</th><th>IP</th><th>By</th><th>With</th><th>Time</th></tr></thead>
+  <tbody>
+  {% for hop in email.received_hops %}
+  <tr>
+    <td>{{ hop.index }}</td>
+    <td>{{ hop.from_host|visible if hop.from_host else "-" }}</td>
+    <td><code>{{ hop.from_ip or "-" }}</code></td>
+    <td>{{ hop.by_host|visible if hop.by_host else "-" }}</td>
+    <td>{{ hop.with_protocol or "-" }}</td>
+    <td>{{ hop.timestamp or "-" }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p><small>Newest hop first. Only the hops added by our own servers can be trusted; the rest are written by the sender.</small></p>
+{% else %}<p>No Received headers.</p>{% endif %}
+
+<h2>Body</h2>
+{% if email.body_html_clean %}
+<details>
+  <summary>HTML (sanitised: no scripts, styles, images or links)</summary>
+  <iframe class="email-html" sandbox src="/reports/{{ report.id }}/body" title="Sanitised HTML body" referrerpolicy="no-referrer" loading="lazy"></iframe>
+</details>
 {% endif %}
+<h3>Plain text</h3>
+<pre class="body">{{ email.body_text or "(empty)" }}</pre>
+
+<details>
+  <summary>All headers ({{ email.headers|length }})</summary>
+  <div class="overflow-auto">
+  <table class="headers">
+    <tbody>
+    {% for name, value in email.headers %}
+    <tr><th scope="row"><code>{{ name|visible }}</code></th><td><code>{{ value|visible }}</code></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</details>
+{% if email.defects %}
+<details>
+  <summary>Parser defects ({{ email.defects|length }})</summary>
+  <ul>{% for d in email.defects %}<li><code>{{ d }}</code></li>{% endfor %}</ul>
+</details>
+{% endif %}
+{% endif %}
+
+<section id="activity">
+  <h2>Activity</h2>
+  {% if activity %}
+  <ul class="activity">
+    {% for e in activity %}
+    <li>
+      <small class="muted">{{ e.created_at|timestamp }} · {{ e.user.email if e.user else "system" }}</small><br>
+      {% if e.action == "report.note" %}
+      <span class="note">{{ e.details.get("text", "") }}</span>
+      {% elif e.action == "report.reclassify" %}
+      {% set previous = e.details.get("previous") %}{% set chosen = e.details.get("verdict", "") %}
+      Verdict set to <strong>{{ verdict_labels.get(chosen, chosen) }}</strong>{% if previous %} (was {{ verdict_labels.get(previous, previous) }}){% endif %}
+      {% elif e.action == "report.requeue" %}
+      Re-analysis requested
+      {% elif e.action == "report.upload" %}
+      Uploaded from the console
+      {% elif e.action == "attachment.download" %}
+      Downloaded attachment <code>{{ e.details.get("filename", "")|visible }}</code>
+      {% elif e.action in ("export.csv", "export.stix") %}
+      Exported {{ e.details.get("indicators", 0) }} indicator(s) as {{ "CSV" if e.action == "export.csv" else "STIX 2.1" }}
+      {% else %}
+      <code>{{ e.action }}</code>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p>No notes or changes yet.</p>{% endif %}
+</section>
 {% endblock %}

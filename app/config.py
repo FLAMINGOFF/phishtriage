@@ -192,6 +192,12 @@ class Settings(BaseSettings):
     # Raw messages and attachments (a dedicated volume in Docker, never the database).
     storage_dir: Path = PROJECT_ROOT / "data" / "storage"
 
+    # Analyst console sessions. Secure cookies need HTTPS; the local http:// demo turns it
+    # off (docker-compose.yml), production refuses to.
+    session_cookie_secure: bool = True
+    session_idle_minutes: int = Field(default=60, ge=5, le=24 * 60)
+    session_max_hours: int = Field(default=12, ge=1, le=7 * 24)
+
     # Bearer token for POST /api/reports. Unset means the API is disabled.
     api_token: SecretStr | None = None
     # Optional copy of app/scoring/rules.yaml to tune points without rebuilding the image.
@@ -224,6 +230,8 @@ class Settings(BaseSettings):
             problems.append(f"SECRET_KEY must be a random value of {MIN_SECRET_KEY_LENGTH}+ chars")
         if not self.imap_ssl:
             problems.append("IMAP_SSL must be true (the mailbox password would travel in clear)")
+        if not self.session_cookie_secure:
+            problems.append("SESSION_COOKIE_SECURE must be true (serve the console over HTTPS)")
         token = self.api_token.get_secret_value() if self.api_token else None
         if token is not None and len(token) < MIN_SECRET_KEY_LENGTH:
             problems.append(f"API_TOKEN must be {MIN_SECRET_KEY_LENGTH}+ random characters")

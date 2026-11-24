@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="referrer" content="no-referrer">
+  <meta name="referrer" content="same-origin">
   {# htmx must not inject inline styles or eval anything: the CSP forbids both. #}
   <meta name="htmx-config" content='{"includeIndicatorStyles": false, "allowEval": false, "allowScriptTags": false}'>
   <title>{% block title %}PhishTriage{% endblock %}</title>
@@ -11,13 +11,25 @@
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/vendor/htmx-2.0.11.min.js" defer></script>
 </head>
-<body>
+{# htmx sends the CSRF token as a header on every request it makes. #}
+<body hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'>
   <header class="container">
     <nav>
       <ul><li><a href="/" class="brand"><strong>PhishTriage</strong></a></li></ul>
+      {% if current_user %}
       <ul>
-        {% block nav %}<li><a href="/upload">Upload .eml</a></li>{% endblock %}
+        <li><a href="/reports">Reports</a></li>
+        <li><a href="/upload">Upload .eml</a></li>
+        {% if current_user.is_admin %}<li><a href="/audit">Audit log</a></li>{% endif %}
+        <li><small class="muted">{{ current_user.email }}</small></li>
+        <li>
+          <form method="post" action="/logout" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="secondary outline">Log out</button>
+          </form>
+        </li>
       </ul>
+      {% endif %}
     </nav>
   </header>
   <main class="container">

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pager %}
+{% block title %}Audit log · PhishTriage{% endblock %}
+{% block content %}
+<hgroup>
+  <h1>Audit log</h1>
+  <p>{{ total }} entr{{ "y" if total == 1 else "ies" }}{% if query %} match the filter{% endif %}. Newest first.</p>
+</hgroup>
+<form method="get" action="/audit" class="filters">
+  <div class="grid">
+    <label>Action
+      <select name="action">
+        <option value="">Any</option>
+        {% for a in actions %}<option value="{{ a }}"{% if filters.action == a %} selected{% endif %}>{{ a }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>User (email)
+      <input type="email" name="user" value="{{ filters.user }}" maxlength="320">
+    </label>
+  </div>
+  <button type="submit">Filter</button>
+  {% if query %}<a href="/audit" class="secondary">Clear</a>{% endif %}
+</form>
+{% if entries %}
+<div class="overflow-auto">
+<table class="audit">
+  <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Report</th><th>Details</th></tr></thead>
+  <tbody>
+  {% for e in entries %}
+  <tr>
+    <td>{{ e.created_at|timestamp }}</td>
+    <td>{{ e.user.email if e.user else "-" }}</td>
+    <td><code>{{ e.action }}</code></td>
+    <td>{% if e.report_id %}<a href="/reports/{{ e.report_id }}">{{ e.report_id|string|truncate(13, true, "…") }}</a>{% else %}-{% endif %}</td>
+    <td><code>{{ e.details|shortjson|visible }}</code></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{{ pager("/audit", query, page, pages) }}
+{% else %}<p>No entries.</p>{% endif %}
+{% endblock %}
