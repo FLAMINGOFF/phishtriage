@@ -1,0 +1,10 @@
+# Only what the image needs goes into the build context. Above all, .env (secrets) and
+# data/ (real mail samples) must never end up in an image layer.
+*
+!pyproject.toml
+!uv.lock
+!alembic.ini
+!app/
+!migrations/
+!config/settings.example.yaml
+**/__pycache__

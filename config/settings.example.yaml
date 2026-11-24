@@ -1,0 +1,69 @@
+# PhishTriage policy file.
+#
+# Copy to config/settings.yaml and adapt it to your organisation. Without a settings.yaml,
+# development falls back to this file, which describes the fictional example.edu used by
+# the demo. Production refuses to start without an explicit policy.
+#
+# Secrets (API keys, passwords) never go here: put them in environment variables / .env.
+# Unknown keys are rejected at startup, so a typo cannot silently disable a check.
+# Write internationalised domains in punycode (xn--...) form.
+
+# Domains that belong to the organisation. Verdict replies are only ever sent to reporters
+# at these domains (and only if the report itself passed DMARC).
+org_domains:
+  - example.edu
+
+# Domains attackers imitate. From domains within edit distance 2 of one of these, or that
+# use look-alike characters, raise SENDER_LOOKALIKE_DOMAIN.
+protected_domains:
+  - example.edu
+
+# Names attackers put in the display name ("IT Service Desk <helpdesk@evil.example>").
+protected_names:
+  - IT Service Desk
+  - Example University
+  - Payroll Office
+  - Office of the CIO
+
+# authserv-ids of OUR inbound mail servers. Authentication-Results headers from anyone
+# else are ignored, because the sender can write any header they like.
+trusted_authserv_ids:
+  - mx.example.edu
+
+# Free webmail providers. An "internal department" mailing from one of these is suspect.
+# The .example entries are stand-ins used by the synthetic demo samples.
+freemail_domains:
+  - gmail.com
+  - googlemail.com
+  - outlook.com
+  - hotmail.com
+  - live.com
+  - yahoo.com
+  - aol.com
+  - icloud.com
+  - proton.me
+  - protonmail.com
+  - gmx.com
+  - mail.com
+  - yandex.com
+  - qq.com
+  - 163.com
+  - 126.com
+  - freemail.example
+
+# URL shorteners. The real destination is hidden until the link is followed.
+shortener_domains:
+  - bit.ly
+  - tinyurl.com
+  - t.co
+  - goo.gl
+  - ow.ly
+  - is.gd
+  - buff.ly
+  - rebrand.ly
+  - cutt.ly
+  - shorturl.at
+  - rb.gy
+  - t.ly
+  - tiny.cc
+  - short.example
