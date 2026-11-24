@@ -1,7 +1,7 @@
 # Progress
 
 ## Current milestone
-M5 – Mailbox intake and replies (next)
+M6 – Hardening, evaluation and presentation (next)
 
 ## Done
 - M0 – Skeleton: uv project, ruff/mypy/pytest/pre-commit, settings loader (.env +
@@ -42,6 +42,18 @@ M5 – Mailbox intake and replies (next)
   Acceptance tests: console pages redirect to the login page, a POST without a CSRF
   token gets 403, XSS payloads in subject, display name, file name and body are shown
   escaped, and every STIX export parses with `stix2`.
+- M5 – Report mailbox and replies: IMAP poller (UID search, size check, `BODY.PEEK[]`,
+  Message-ID de-duplication, `UID MOVE` to `Processed` with a COPY/EXPUNGE fallback,
+  oversized messages to `Rejected`), reporter address and DMARC result taken from the
+  report email, reply step in the worker with the plan's anti-abuse rules (organisation
+  domains, DMARC pass, 20 replies per reporter and hour), plain-text English reply with
+  advice per verdict, rule reasons, a defanged subject and the "forward as attachment"
+  tip for inline forwards; `reports.reporter_dmarc`, `reply_status` and `replied_at`
+  with a migration; reply status on the report page and in the API;
+  `GET /api/reports?message_id=`; `samples/` and `scripts/send_sample.py`;
+  `docs/mailbox.md`. Acceptance test (`tests/integration/test_mail_flow.py`, run in CI
+  against the Compose stack): a sample reported by email is `done` and its reply is in
+  Mailpit within one minute; a report from an external address gets no reply.
 
 ## Open issues
 - None yet
@@ -205,6 +217,37 @@ M5 – Mailbox intake and replies (next)
 - M4: "Analyse again" in the console is limited to finished, stand-alone reports;
   re-analysing a split submission rebuilds its reports under new IDs, so that stays a
   CLI operation (`app.cli requeue`).
+
+- M5: three columns on `reports` that the plan's data model does not list:
+  `reporter_dmarc` (the DMARC result for the reporter, needed for the reply rule),
+  `reply_status` (why a reply was or was not sent, shown to analysts) and `replied_at`
+  (the hourly limit counts these rows, so it holds across workers and restarts without
+  extra Redis state).
+- M5: "the report itself passes DMARC" is read from the topmost `Authentication-Results`
+  header with a trusted authserv-id (`policy.trusted_authserv_ids`), the same trust rule
+  the analyzers use. The mail server in front of the mailbox must strip such headers
+  from incoming mail; docs/mailbox.md says so. PhishTriage does not re-verify DKIM or
+  DMARC itself: it is not the receiving MTA and has no SMTP envelope.
+- M5: `scripts/send_sample.py` adds the `Authentication-Results` header that the
+  organisation's MX would add (`mx.example.edu; dmarc=pass`), because the demo mailbox
+  has no mail server in front of it. `--authserv-id ''` sends a report without it.
+- M5: the reporter is the `From` address of the report email (the wrapper), never of
+  the reported original; mailbox reports take it from there instead of from the caller.
+- M5: one reply per submission: when an employee attaches several emails, the first
+  report replies once and lists every email with its verdict. Re-analysing never sends
+  a second reply.
+- M5: a reply failure (SMTP down) is recorded as `reply_status = "failed: ..."` and
+  logged, but does not fail or retry the job: the analysis is already stored, and a
+  retry would redo the intel lookups.
+- M5: messages over the 25 MB limit are moved to a `Rejected` folder without being
+  downloaded, so one huge message cannot block the inbox or be fetched every round.
+- M5: if Redis is down, the poller stores the report as failed ("could not be queued")
+  and still moves the message (same behaviour as the other channels; `requeue --failed`
+  retries), then stops the round.
+- M5: `GET /api/reports?message_id=` (Bearer token) finds reports by the Message-ID of
+  the report email or of a reported email; the end-to-end test needs it to find the
+  report it sent by email.
+- M5: the version in `app/__init__.py` and `pyproject.toml` is `1.0.0.dev0` until M6.
 
 ## Manual steps for the user
 - Create the first console account: `docker compose exec web python -m app.cli create-user

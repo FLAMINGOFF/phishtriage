@@ -10,7 +10,7 @@
 PhishTriage 自动解析、分析、查询威胁情报，用可解释的规则打分，回信告诉上报人结果；
 SOC 分析员在 Web 后台复核、改判定、导出 IOC。
 
-> **状态：** 开发中。已完成 M0（项目骨架）、M1（邮件解析与 IOC 提取）、M2（分析器与打分）、M3（队列、worker 与威胁情报）、M4（分析员后台，v0.1.0）。进度见 [PROGRESS.md](PROGRESS.md)。
+> **状态：** 开发中。已完成 M0（项目骨架）、M1（邮件解析与 IOC 提取）、M2（分析器与打分）、M3（队列、worker 与威胁情报）、M4（分析员后台，v0.1.0）、M5（上报邮箱与自动回信）。进度见 [PROGRESS.md](PROGRESS.md)。
 
 ## 演示
 
@@ -92,6 +92,15 @@ Received 链路、纯文本正文，以及放在沙箱 iframe 里的清洗后 HT
 登录、改判、备注、下载和导出都会写进审计日志，管理员可以在后台查看。细节见
 [docs/console.md](docs/console.md)（英文）。
 
+## 上报邮箱与自动回信
+
+员工把可疑邮件以附件形式转发到上报邮箱。poller 通过 IMAP 取新邮件（读取时不标记为已读），
+按 Message-ID 跳过已处理过的，放进队列后移到 `Processed` 文件夹。worker 得出判定后给上报人
+回一封纯文本邮件：判定结果、该怎么做、主要原因。只回复本组织域名下的地址，而且组织自己的邮件
+服务器要记录该上报邮件通过了 DMARC，这样谁也没法借 PhishTriage 给第三方发邮件；每个上报人
+每小时最多收到 20 封回信。内联转发的邮件同样会分析，回信里会提醒下次用“以附件形式转发”。
+细节见 [docs/mailbox.md](docs/mailbox.md)（英文）。
+
 ## 安全设计
 
 每封上报邮件都当成攻击者可控的输入。要点如下（完整的 STRIDE 威胁模型见 M6 的
@@ -102,6 +111,8 @@ Received 链路、纯文本正文，以及放在沙箱 iframe 里的清洗后 HT
 - Web 进程从不解析邮件，解析只在 worker 里做。worker 的 HTTP 客户端只能访问写死的情报域名
   （只走 HTTPS、不跟随跳转），邮件内容没法让它去请求别的地址。
 - 压缩包只读目录、不解压；邮件大小和嵌套层数有严格上限。
+- 回信只发给本组织域名下、且通过 DMARC 验证的上报人（每人每小时最多 20 封），内容是固定模板的纯文本，
+  被举报邮件的主题会先去活再写进去，所以没人能借平台给别人发垃圾邮件或链接。
 - 后台：argon2id 存密码，服务端会话配 HttpOnly/SameSite cookie，所有表单带 CSRF token，
   同一账号 15 分钟内失败 5 次就锁定，严格的 CSP（不允许内联脚本），所有攻击者可控的字符串都转义显示。
 - 密钥只从环境变量读取；策略文件遇到未知字段直接报错。
@@ -130,6 +141,18 @@ docker compose exec web python -m app.cli create-user admin@example.edu --role a
 
 用合成样例邮件试一下：
 
+- 像员工那样用邮件上报：把 `samples/` 里的每封样例发到上报邮箱（GreenMail），并等待
+  PhishTriage 的回信（回信会出现在 Mailpit 里）：
+
+  ```bash
+  python3 scripts/send_sample.py --wait 90
+  # sent credential-phish.eml as <...@example.edu>
+  # ...
+  # reply for credential-phish.eml: [PhishTriage] Malicious: Action required: verify your account
+  ```
+
+  打开 http://localhost:8025 看回信，打开 http://localhost:8000/reports 看报告。
+  加上 `--from outsider@external.example` 可以验证外部地址的上报不会收到回信。
 - 网页上传：登录后打开 http://localhost:8000/upload ，选择 `tests/fixtures/emails/` 里的任意一封。
   报告页会等 worker 处理完，然后显示判定、证据和情报结果；http://localhost:8000/reports 是报告队列。
 - REST API：在 `.env` 里设置 `API_TOKEN`（至少 32 个字符），重启后提交并等待判定
@@ -146,8 +169,6 @@ docker compose exec web python -m app.cli create-user admin@example.edu --role a
 - 威胁情报：在 `.env` 里填 `VT_API_KEY` 和/或 `URLHAUS_AUTH_KEY`，然后重启 worker
   （`docker compose up -d worker`）。演示样例只用保留域名，查询结果是“查不到”，这是正常的。
 
-通过邮件发送样例上报的脚本（`scripts/send_sample.py`）在 M5 加入。
-
 ### 本地开发
 
 ```bash
@@ -155,6 +176,8 @@ uv sync                     # 按 uv.lock 安装 Python 3.12 和全部依赖
 uv run pre-commit install   # 每次提交自动跑 ruff、mypy、gitleaks
 uv run pytest               # 测试从不联网（respx 会拦住所有请求）
 uv run pytest -m live tests/live   # 可选：真实调用情报接口，需要你自己的 key
+# 可选：对 `API_TOKEN=... docker compose up` 起来的整套服务跑端到端测试（见 docs/mailbox.md）
+PHISHTRIAGE_BASE_URL=http://127.0.0.1:8000 PHISHTRIAGE_API_TOKEN=... uv run pytest -m integration tests/integration
 uv run ruff check . && uv run ruff format --check . && uv run mypy app
 uv run python -m app.cli check-config
 uv run python scripts/generate_emails.py           # 重新生成样例邮件
