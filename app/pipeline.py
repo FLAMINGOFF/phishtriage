@@ -10,14 +10,17 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.analysis import Analysis, analyze_email
 from app.config import Policy
 from app.db.models import (
     Attachment,
     Email,
+    Finding,
     Observable,
     ObservableType,
     Report,
@@ -25,6 +28,7 @@ from app.db.models import (
     ReportStatus,
     utcnow,
 )
+from app.intel.models import EMPTY_SNAPSHOT, IntelSnapshot
 from app.parsing.eml import (
     DEFAULT_LIMITS,
     Limits,
@@ -32,7 +36,6 @@ from app.parsing.eml import (
     ParsedEmail,
     extract_originals,
 )
-from app.parsing.filetype import detect_type
 from app.parsing.html import sanitize_html
 from app.parsing.iocs import extract_observables
 from app.storage import BlobStore
@@ -77,6 +80,9 @@ def _reset(session: Session, report: Report) -> None:
     report.email = None
     report.attachments.clear()
     report.observables.clear()
+    report.findings.clear()
+    report.score = None
+    report.verdict = None
     # Query instead of trusting report.children: the collection may be stale in this session.
     for child in session.scalars(select(Report).where(Report.parent_id == report.id)).all():
         session.delete(child)
@@ -102,7 +108,12 @@ def _child_of(report: Report) -> Report:
 
 
 def _persist_email(
-    session: Session, store: BlobStore, report: Report, parsed: ParsedEmail, policy: Policy
+    session: Session,
+    store: BlobStore,
+    report: Report,
+    parsed: ParsedEmail,
+    policy: Policy,
+    analysis: Analysis,
 ) -> None:
     blob = store.put(parsed.raw, "raw")
     report.email = Email(
@@ -125,15 +136,17 @@ def _persist_email(
         forwarded_inline=parsed.forwarded_inline,
         defects=parsed.defects,
     )
-    for attachment in parsed.attachments:
+    for attachment, facts in zip(parsed.attachments, analysis.attachments, strict=True):
         stored = store.put(attachment.content, "attachments")
         report.attachments.append(
             Attachment(
                 filename=attachment.filename,
                 declared_type=attachment.declared_type[:255],
-                detected_type=detect_type(attachment.content),
+                detected_type=facts.detected_type[:255] if facts.detected_type else None,
                 size=attachment.size,
                 sha256=attachment.sha256,
+                has_macros=facts.has_macros,
+                is_encrypted=facts.is_encrypted,
                 storage_path=stored.path,
             )
         )
@@ -145,10 +158,31 @@ def _persist_email(
                 defanged=observable.defanged[:4096],
             )
         )
+    result = analysis.result
+    report.score = result.score
+    report.verdict = result.verdict
+    report.error = analysis.error_summary
+    for finding in result.findings:
+        report.findings.append(
+            Finding(
+                rule_id=finding.rule_id,
+                analyzer=finding.analyzer,
+                score=finding.score,
+                evidence=[item.model_dump() for item in finding.evidence],
+            )
+        )
 
 
-def process(session: Session, store: BlobStore, report_id: uuid.UUID, policy: Policy) -> Report:
-    """Parse a submitted report and persist the results. Returns the (first) report."""
+def process(
+    session: Session,
+    store: BlobStore,
+    report_id: uuid.UUID,
+    policy: Policy,
+    *,
+    intel: IntelSnapshot = EMPTY_SNAPSHOT,
+    rules_file: Path | None = None,
+) -> Report:
+    """Parse, analyze and score a submitted report. Returns the (first) report."""
     report = session.get(Report, report_id)
     if report is None:
         raise LookupError(f"report {report_id} not found")
@@ -176,8 +210,10 @@ def process(session: Session, store: BlobStore, report_id: uuid.UUID, policy: Po
         child = _child_of(report)
         report.children.append(child)
         targets.append(child)
+    now = utcnow()
     for target, original in zip(targets, intake.originals, strict=True):
-        _persist_email(session, store, target, original, policy)
+        analysis = analyze_email(original, policy, intel=intel, now=now, rules_file=rules_file)
+        _persist_email(session, store, target, original, policy, analysis)
         target.status = ReportStatus.DONE
         target.analyzed_at = utcnow()
     session.commit()
