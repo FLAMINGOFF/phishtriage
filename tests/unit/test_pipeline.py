@@ -104,7 +104,6 @@ def test_process_wrapper_with_two_originals(
             store,
             fixture_bytes("08"),
             source=ReportSource.IMAP,
-            reporter_email="alice@example.edu",
             outer_message_id="<r8@example.edu>",
         )
         session.commit()
@@ -117,7 +116,9 @@ def test_process_wrapper_with_two_originals(
         assert child.parent_id == parent.id
         assert {r.status for r in reports} == {ReportStatus.DONE}
         assert {r.intake_mode for r in reports} == {"attachment"}
-        assert child.reporter_email == "alice@example.edu"
+        # The reporter is whoever sent the email to the report mailbox.
+        assert parent.reporter_email == child.reporter_email == "bob@example.edu"
+        assert parent.reporter_dmarc == child.reporter_dmarc
         assert child.outer_message_id == "<r8@example.edu>"
         assert parent.email is not None
         assert child.email is not None

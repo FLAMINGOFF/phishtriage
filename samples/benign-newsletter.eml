@@ -1,0 +1,20 @@
+Received: from mail.example.org (mail.example.org [198.51.100.40])
+	by mx.example.edu (Postfix) with ESMTPS id 2News
+	for <alice@example.edu>; Tue, 24 Nov 2026 02:00:00 +0000
+Authentication-Results: mx.example.edu;
+	spf=pass smtp.mailfrom=example.org;
+	dkim=pass header.d=example.org;
+	dmarc=pass header.from=example.org
+From: Research Digest <digest@example.org>
+To: alice@example.edu
+Subject: November research digest
+Date: Tue, 24 Nov 2026 01:59:59 +0000
+Message-ID: <digest-12@example.org>
+MIME-Version: 1.0
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+<html><body><h1>November digest</h1><p>Read the latest research news on <a =
+href=3D"https://www.example.org/news/november">www.example.org</a>.</p><p><=
+a href=3D"https://www.example.org/unsubscribe?u=3Dabc">Unsubscribe</a></p><=
+/body></html>

@@ -8,6 +8,11 @@
   <p>Report <code>{{ report.id }}</code> · {{ report.source.value }} · received {{ report.received_at|timestamp }}
     {% if report.reporter_email %} · reported by {{ report.reporter_email|visible }}{% endif %} · {{ report.status.value }}</p>
 </hgroup>
+{% if report.source.value == "imap" and not report.parent_id and not pending %}
+<p class="reply"><small>Reply to the reporter:
+  {% if report.replied_at %}sent {{ report.replied_at|timestamp }}{% else %}{{ report.reply_status or "none" }}{% endif %}
+  {% if report.reporter_dmarc %} · reporter's DMARC: {{ report.reporter_dmarc }}{% endif %}</small></p>
+{% endif %}
 {% if pending %}{% include "_status.html" %}{% endif %}
 {% if report.error %}<p class="error" role="alert">{{ report.error }}</p>{% endif %}
 

@@ -22,6 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = ROOT / "tests" / "fixtures" / "emails"
+SAMPLES_DIR = ROOT / "samples"
 
 CRLF = "\r\n"
 RTLO = chr(0x202E)
@@ -716,21 +717,42 @@ def encode(text: str) -> bytes:
         return text.encode("utf-8")
 
 
+# The demo samples (samples/): suspicious and benign originals, as an employee would
+# forward them to the report mailbox (scripts/send_sample.py attaches them).
+SAMPLES = {
+    "credential-phish.eml": "01_credential_phish_qp.eml",
+    "link-mismatch-html.eml": "02_html_link_mismatch_b64.eml",
+    "gbk-invoice-zh.eml": "03_gbk_chinese.eml",
+    "attachments-macro-lnk-rlo.eml": "09_attachments_zoo.eml",
+    "punycode-ip-shortener.eml": "10_punycode_ip_shortener.eml",
+    "forged-auth-results.eml": "14_forged_auth_results.eml",
+    "benign-internal.eml": "11_benign_internal.eml",
+    "benign-newsletter.eml": "12_benign_newsletter_html.eml",
+}
+
+
+def outputs() -> dict[Path, bytes]:
+    generated = {name: encode(text) for name, text in fixtures().items()}
+    files = {FIXTURES / name: data for name, data in generated.items()}
+    files.update({SAMPLES_DIR / name: generated[source] for name, source in SAMPLES.items()})
+    return files
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="fail if files are out of date")
     args = parser.parse_args()
     FIXTURES.mkdir(parents=True, exist_ok=True)
+    SAMPLES_DIR.mkdir(parents=True, exist_ok=True)
     stale = []
-    for name, text in fixtures().items():
-        path = FIXTURES / name
-        data = encode(text)
+    for path, data in outputs().items():
+        name = str(path.relative_to(ROOT))
         if args.check:
             if not path.exists() or path.read_bytes() != data:
                 stale.append(name)
             continue
         path.write_bytes(data)
-        print(f"wrote {path.relative_to(ROOT)} ({len(data)} bytes)")
+        print(f"wrote {name} ({len(data)} bytes)")
     if stale:
         raise SystemExit(f"out of date: {', '.join(stale)} (run scripts/generate_emails.py)")
 

@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+from email.utils import parseaddr
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
@@ -188,6 +189,18 @@ class Settings(BaseSettings):
     imap_password: SecretStr = SecretStr("")
     imap_mailbox: str = "INBOX"
     poll_interval_seconds: int = Field(default=30, ge=5, le=3600)
+    imap_processed_mailbox: str = "Processed"  # handled messages are moved here
+    imap_rejected_mailbox: str = "Rejected"  # messages over the size limit
+
+    # Replies to reporters (Mailpit in the demo).
+    replies_enabled: bool = True
+    reply_from: str = "PhishTriage <report-phishing@example.edu>"
+    reply_hourly_limit: int = Field(default=20, ge=1, le=1000)
+    smtp_host: str = "localhost"
+    smtp_port: int = Field(default=1025, ge=1, le=65535)
+    smtp_security: Literal["none", "starttls", "ssl"] = "none"
+    smtp_user: str = ""
+    smtp_password: SecretStr = SecretStr("")
 
     # Raw messages and attachments (a dedicated volume in Docker, never the database).
     storage_dir: Path = PROJECT_ROOT / "data" / "storage"
@@ -219,6 +232,14 @@ class Settings(BaseSettings):
 
     policy: Policy
 
+    @field_validator("reply_from")
+    @classmethod
+    def _reply_from(cls, value: str) -> str:
+        _, address = parseaddr(value)
+        if "@" not in address or any(ch in value for ch in "\r\n"):
+            raise ValueError("REPLY_FROM must look like 'PhishTriage <soc@example.edu>'")
+        return value
+
     @model_validator(mode="after")
     def _production_guards(self) -> Settings:
         """Fail closed: refuse to run in production with demo-grade settings."""
@@ -232,6 +253,8 @@ class Settings(BaseSettings):
             problems.append("IMAP_SSL must be true (the mailbox password would travel in clear)")
         if not self.session_cookie_secure:
             problems.append("SESSION_COOKIE_SECURE must be true (serve the console over HTTPS)")
+        if self.smtp_user and self.smtp_security == "none":
+            problems.append("SMTP_SECURITY must be starttls or ssl when SMTP_USER is set")
         token = self.api_token.get_secret_value() if self.api_token else None
         if token is not None and len(token) < MIN_SECRET_KEY_LENGTH:
             problems.append(f"API_TOKEN must be {MIN_SECRET_KEY_LENGTH}+ random characters")

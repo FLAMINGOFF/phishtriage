@@ -136,6 +136,18 @@ jobs:
             --data-urlencode "password=ci-only-console-password" \
             --data-urlencode "csrf_token=$token" http://127.0.0.1:8000/login
           curl -fsS -c "$jar" -b "$jar" http://127.0.0.1:8000/reports | grep -q "Mailbox quota exceeded"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install "uv==${UV_VERSION}"
+      - run: uv sync --locked
+      - name: Report by email; the reporter gets the verdict within a minute (M5 end to end)
+        env:
+          PHISHTRIAGE_BASE_URL: http://127.0.0.1:8000
+          PHISHTRIAGE_API_TOKEN: ${{ env.API_TOKEN }}
+        run: uv run pytest -m integration tests/integration -p no:cacheprovider
+      - name: Report every sample; each gets a reply in Mailpit
+        run: python3 scripts/send_sample.py --wait 120
       - name: Show state on failure
         if: failure()
         run: |
