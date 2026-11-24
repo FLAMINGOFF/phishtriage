@@ -25,15 +25,26 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ---------------------------------------------------------------- runtime: no build tools
 FROM ${PYTHON_IMAGE} AS runtime
 
+# libmagic: content-based file type detection (python-magic). Nothing else is installed.
+# Skipped when the base image already provides it (an offline or mirrored base).
+RUN if ! ldconfig -p | grep -q 'libmagic\.so\.1 '; then \
+      apt-get update \
+      && apt-get install -y --no-install-recommends libmagic1 \
+      && rm -rf /var/lib/apt/lists/*; \
+    fi
+
 # A fixed, unprivileged UID; the code below is owned by root, so the process cannot
-# rewrite its own code even if an attacker gets code execution in it.
+# rewrite its own code even if an attacker gets code execution in it. The only writable
+# place is the blob store (a volume in compose).
 RUN groupadd --system --gid 10001 phishtriage \
  && useradd --system --uid 10001 --gid phishtriage --no-create-home \
-            --home-dir /nonexistent --shell /usr/sbin/nologin phishtriage
+            --home-dir /nonexistent --shell /usr/sbin/nologin phishtriage \
+ && install -d -o phishtriage -g phishtriage -m 0750 /var/lib/phishtriage
 
 ENV PATH="/opt/venv/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    STORAGE_DIR=/var/lib/phishtriage/storage
 
 COPY --from=build /opt/venv /opt/venv
 

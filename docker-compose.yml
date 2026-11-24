@@ -19,9 +19,12 @@ x-app: &app
     IMAP_SSL: "false"
     IMAP_USER: report-phishing@example.edu
     IMAP_PASSWORD: ${IMAP_PASSWORD:-demo-mailbox-password}
+    API_TOKEN: ${API_TOKEN:-}  # empty: the REST API is off
   volumes:
     # Policy is mounted, so editing config/settings.yaml needs a restart, not a rebuild.
     - ./config:/app/config:ro
+    # Raw messages and attachments (content-addressed, see app/storage.py).
+    - storage:/var/lib/phishtriage
   # Hardening: immutable root filesystem, no Linux capabilities, no privilege escalation.
   read_only: true
   tmpfs:
@@ -153,3 +156,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  storage:
