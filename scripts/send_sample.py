@@ -44,10 +44,20 @@ def _crlf(data: bytes) -> bytes:
 
 
 def _sample_subject_and_text(raw: bytes) -> tuple[str, str]:
+    """Subject and body text for the report, tolerant of the broken samples (bad charsets)."""
     message = email.message_from_bytes(raw, policy=email.policy.default)
-    subject = str(message.get("Subject", "") or "")
-    body = message.get_body(preferencelist=("plain", "html"))  # type: ignore[attr-defined]
-    text = body.get_content() if body is not None else ""
+    try:
+        subject = str(message.get("Subject", "") or "")
+    except (ValueError, LookupError):
+        subject = ""
+    body = message.get_body(preferencelist=("plain", "html"))
+    if body is None:
+        return subject, ""
+    try:
+        text = body.get_content()
+    except (LookupError, UnicodeError, KeyError):
+        payload = body.get_payload(decode=True)
+        text = payload.decode("utf-8", "replace") if isinstance(payload, bytes) else ""
     return subject, text
 
 

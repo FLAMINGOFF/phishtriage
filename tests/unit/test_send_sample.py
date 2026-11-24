@@ -77,3 +77,18 @@ def test_wait_for_replies(monkeypatch: pytest.MonkeyPatch, capsys) -> None:
     assert "reply for a.eml: [PhishTriage] Malicious: x" in capsys.readouterr().out
     assert not send_sample.wait_for_replies("http://mailpit", {"<b@example.edu>": "b.eml"}, 0)
     assert "no reply for b.eml" in capsys.readouterr().err
+
+
+def test_every_fixture_can_be_wrapped() -> None:
+    """Including the deliberately broken ones (unknown charset, malformed headers)."""
+    fixtures = Path(__file__).resolve().parents[1] / "fixtures" / "emails"
+    for path in sorted(fixtures.glob("*.eml")):
+        for inline in (False, True):
+            _, raw = send_sample.build_report(
+                path.read_bytes(),
+                reporter="alice@example.edu",
+                mailbox="report-phishing@example.edu",
+                authserv_id="mx.example.edu",
+                inline=inline,
+            )
+            assert extract_originals(raw, is_report_wrapper=True).originals, path.name
