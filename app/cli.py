@@ -14,6 +14,7 @@ import argparse
 import json
 import sys
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, TextIO
 from urllib.parse import urlsplit, urlunsplit
@@ -21,9 +22,9 @@ from urllib.parse import urlsplit, urlunsplit
 from pydantic import ValidationError
 
 from app import __version__
+from app.analysis import analyze_email
 from app.config import ConfigError, Policy, Settings, get_settings
 from app.parsing.eml import MessageRejected, ParsedEmail, extract_originals
-from app.parsing.filetype import detect_type
 from app.parsing.iocs import extract_observables
 
 
@@ -72,8 +73,23 @@ def cmd_check_config(_args: argparse.Namespace, out: TextIO) -> int:
 
 
 def summarize_email(parsed: ParsedEmail, policy: Policy) -> dict[str, Any]:
-    """JSON-friendly view of one parsed email: what an analyst wants to see first."""
+    """JSON-friendly view of one email: verdict and findings first, then the details."""
+    analysis = analyze_email(parsed, policy, now=datetime.now(UTC))
+    result = analysis.result
     return {
+        "verdict": result.verdict.value,
+        "score": result.score,
+        "findings": [
+            {
+                "rule_id": f.rule_id,
+                "score": f.score,
+                "analyzer": f.analyzer,
+                "description": f.description,
+                "evidence": [e.model_dump() for e in f.evidence],
+            }
+            for f in result.findings
+        ],
+        "analysis_errors": analysis.errors,
         "message_id": parsed.message_id,
         "subject": parsed.subject,
         "from": parsed.from_addr.model_dump() if parsed.from_addr else None,
@@ -95,11 +111,13 @@ def summarize_email(parsed: ParsedEmail, policy: Policy) -> dict[str, Any]:
             {
                 "filename": a.filename,
                 "declared_type": a.declared_type,
-                "detected_type": detect_type(a.content),
+                "detected_type": a.detected_type,
                 "size": a.size,
                 "sha256": a.sha256,
+                "has_macros": a.has_macros,
+                "is_encrypted": a.is_encrypted,
             }
-            for a in parsed.attachments
+            for a in analysis.attachments
         ],
         "observables": [
             o.model_dump() for o in extract_observables(parsed, own_domains=policy.org_domains)

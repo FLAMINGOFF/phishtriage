@@ -5,3 +5,11 @@
 .notice { border-left: 4px solid var(--pico-primary); padding-left: 0.75rem; }
 pre.body { white-space: pre-wrap; word-break: break-word; max-height: 40rem; overflow: auto; }
 table code { word-break: break-all; }
+
+.verdict { padding: 0.5rem 1rem; border-left: 0.4rem solid var(--pico-muted-border-color); }
+.verdict-malicious { border-left-color: #c62828; }
+.verdict-suspicious { border-left-color: #ef6c00; }
+.verdict-low_risk { border-left-color: #f9a825; }
+.verdict-no_issues { border-left-color: #2e7d32; }
+.findings ul { margin: 0; padding-left: 1rem; }
+.findings code { word-break: break-all; }

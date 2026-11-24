@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from app.db.models import Report
+from app.scoring.engine import RULES_FILE, VERDICT_LABELS, cached_rules
 from app.web.deps import get_session
 from app.web.templating import templates
 
@@ -28,4 +29,13 @@ def report_detail(
     report = session.get(Report, report_id)
     if report is None:
         raise HTTPException(404, "report not found")
-    return templates.TemplateResponse(request, "report.html", {"report": report})
+    rules = cached_rules(request.app.state.settings.rules_file or RULES_FILE)
+    return templates.TemplateResponse(
+        request,
+        "report.html",
+        {
+            "report": report,
+            "verdict_labels": VERDICT_LABELS,
+            "rule_descriptions": {rule_id: r.description for rule_id, r in rules.rules.items()},
+        },
+    )
