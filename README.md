@@ -12,8 +12,8 @@ with explainable rules, replies to the reporter with a verdict, and gives SOC an
 console to review, re-classify and export IOCs.
 
 > **Status:** under active development. Done: M0 (skeleton), M1 (parsing and IOC
-> extraction), M2 (analyzers and scoring), M3 (queue, worker and threat intelligence).
-> See [PROGRESS.md](PROGRESS.md).
+> extraction), M2 (analyzers and scoring), M3 (queue, worker and threat intelligence),
+> M4 (analyst console, v0.1.0). See [PROGRESS.md](PROGRESS.md).
 
 ## Demo
 
@@ -94,6 +94,18 @@ to its free-tier limits by a token bucket shared by all workers (at most 4 reque
 60 seconds, proven with a fake clock in the tests) and a daily budget of 500. Details,
 statuses and settings: [docs/intel.md](docs/intel.md).
 
+## Analyst console
+
+Analysts log in (accounts are created with `python -m app.cli create-user`) and work
+through a queue they can filter by verdict, status and review state. A report's page shows
+the verdict with every matched rule and its evidence, the defanged indicators with their
+threat-intel answers, attachments, Authentication-Results, the Received chain, the plain
+text body and, inside a sandboxed frame, the sanitised HTML body. Analysts can set their
+own verdict (the automatic score is kept), add notes, re-run the analysis, download
+attachments as ZIPs encrypted with the password `infected`, and export indicators as CSV
+or as a STIX 2.1 bundle. Logins, verdict changes, notes, downloads and exports are written
+to an audit log that administrators can browse. Details: [docs/console.md](docs/console.md).
+
 ## Security design
 
 Every reported email is treated as attacker-controlled input. Highlights (full STRIDE model
@@ -106,6 +118,9 @@ in `docs/threat-model.md`, M6):
   fixed intel hosts (no redirects, HTTPS only), so email content cannot make it fetch
   anything else.
 - Archives are listed, never extracted; strict size and nesting limits.
+- Console: argon2id passwords, server-side sessions with HttpOnly/SameSite cookies, CSRF
+  tokens on every form, account lock after 5 failed logins in 15 minutes, a strict CSP
+  without inline script, and every attacker-controlled string rendered escaped.
 - Secrets come only from environment variables; the policy file rejects unknown keys.
 - Containers run as an unprivileged user with a read-only root filesystem and no Linux
   capabilities; demo ports are bound to `127.0.0.1`.
@@ -121,17 +136,21 @@ cp .env.example .env          # optional for the demo; needed for API keys
 docker compose up --build --wait
 curl http://localhost:8000/healthz   # {"status":"ok"}
 curl http://localhost:8000/readyz    # database and Redis checks
+docker compose exec web python -m app.cli create-user admin@example.edu --role admin
 ```
+
+The last command asks for a password (12+ characters) for the first console account.
 
 | URL | What |
 | --- | --- |
-| http://localhost:8000 | PhishTriage web (analyst console from M4) |
+| http://localhost:8000 | PhishTriage analyst console (log in with that account) |
 | http://localhost:8025 | Mailpit: replies sent by PhishTriage |
 
 Try it with one of the synthetic sample emails:
 
-- Upload: open http://localhost:8000/upload and choose a file from `tests/fixtures/emails/`.
-  The report page waits for the worker and shows the verdict, its evidence and the intel.
+- Upload: log in, open http://localhost:8000/upload and choose a file from
+  `tests/fixtures/emails/`. The report page waits for the worker and shows the verdict,
+  its evidence and the intel; the queue at http://localhost:8000/reports lists them all.
 - REST API: set `API_TOKEN` in `.env` (32+ characters), restart, then submit and wait for
   the verdict (the script polls `GET /api/reports/{id}` until the worker is done):
 
