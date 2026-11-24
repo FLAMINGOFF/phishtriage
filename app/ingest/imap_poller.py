@@ -242,25 +242,49 @@ def default_intake(settings: Settings) -> Intake:
     )
 
 
+def default_chores(settings: Settings) -> Callable[[], None]:
+    """Periodic work that is not about the mailbox: queue the daily retention purge.
+
+    The poller is the stack's only process with a timer loop, so it is the clock; the
+    worker does the actual work.
+    """
+    from app.queueing import enqueue_purge
+    from app.redis_client import redis_client
+    from app.retention import queue_daily_purge
+
+    redis = redis_client(settings.redis_url)
+
+    def chores() -> None:
+        queue_daily_purge(redis, lambda: enqueue_purge(redis))
+
+    return chores
+
+
 def run(
     settings: Settings,
     stop: threading.Event,
     heartbeat: Path = HEARTBEAT_FILE,
     intake: Intake | None = None,
     poll: Callable[[Settings, Intake, Path], PollResult] | None = None,
+    chores: Callable[[], None] | None = None,
 ) -> None:
-    """Poll until ``stop`` is set.
+    """Poll until ``stop`` is set, and run the periodic ``chores`` after every round.
 
     Any error is logged and the loop carries on: a poller must survive a mailbox restart.
     A failure that persists shows up as a stale heartbeat, i.e. an unhealthy container.
     """
     intake = intake or default_intake(settings)
     poll = poll or poll_once
+    chores = chores or default_chores(settings)
     while not stop.is_set():
         try:
             poll(settings, intake, heartbeat)
         except Exception:
             logger.exception("mailbox poll failed")
+        try:
+            chores()
+        except Exception:
+            logger.exception("periodic chores failed")
         stop.wait(settings.poll_interval_seconds)
 
 

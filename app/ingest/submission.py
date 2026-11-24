@@ -117,7 +117,8 @@ def requeue_reports(
     roots: dict[uuid.UUID, Report] = {}
     for report in session.scalars(select(Report).where(or_(*conditions))):
         root = session.get(Report, report.parent_id) if report.parent_id else report
-        if root is not None:
+        # A purged report has no raw message left to analyse.
+        if root is not None and root.purged_at is None:
             roots[root.id] = root
     for root in roots.values():
         root.status = ReportStatus.QUEUED

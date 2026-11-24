@@ -333,9 +333,32 @@ def test_run_survives_errors_and_stops(
         stop.set()
         return imap_poller.PollResult()
 
+    chores = []
+
+    def flaky_chores() -> None:
+        chores.append(1)
+        raise ConnectionError("redis is down")
+
     monkeypatch.setattr(stop, "wait", lambda _timeout: stop.is_set())
-    imap_poller.run(settings, stop, tmp_path / "hb", intake=intake, poll=flaky)
+    imap_poller.run(settings, stop, tmp_path / "hb", intake=intake, poll=flaky, chores=flaky_chores)
     assert len(calls) == 2
+    assert len(chores) == 2  # after the failed round too
+
+
+def test_default_chores_queue_the_purge_once_a_day(settings, monkeypatch) -> None:
+    import fakeredis
+    from rq import Queue
+
+    import app.redis_client
+    from app.queueing import QUEUE_NAME, SERIALIZER
+
+    redis = fakeredis.FakeRedis()
+    monkeypatch.setattr(app.redis_client, "redis_client", lambda _url: redis)
+    chores = imap_poller.default_chores(settings)
+    chores()
+    chores()
+    queue = Queue(QUEUE_NAME, connection=redis, serializer=SERIALIZER)
+    assert [job.func_name for job in queue.get_jobs()] == ["app.jobs.purge_expired"]
 
 
 def test_default_intake_is_built_from_settings(settings, monkeypatch) -> None:

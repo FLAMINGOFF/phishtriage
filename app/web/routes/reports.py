@@ -91,7 +91,12 @@ def can_requeue(report: Report) -> bool:
     Re-analysing a split submission rebuilds its other reports under new IDs, which
     would drop their analyst verdicts; ``python -m app.cli requeue`` covers that case.
     """
-    return report.status not in PENDING and report.parent_id is None and not report.children
+    return (
+        report.status not in PENDING
+        and report.parent_id is None
+        and not report.children
+        and report.purged_at is None
+    )
 
 
 # --------------------------------------------------------------------------- pages
@@ -206,6 +211,7 @@ def report_detail(request: Request, report_id: uuid.UUID, session: DbSession) ->
             "activity": _activity(session, report),
             "trusted_authserv_ids": trusted,
             "can_requeue": can_requeue(report),
+            "retention_days": request.app.state.settings.retention_days,
             "zip_password": PASSWORD.decode(),
             "max_note_length": MAX_NOTE_LENGTH,
         },

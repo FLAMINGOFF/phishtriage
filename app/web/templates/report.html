@@ -73,6 +73,9 @@
   </div>
 </section>
 
+{% if report.purged_at %}
+<p class="notice">The raw message, attachment files and email body were deleted on {{ report.purged_at.strftime("%Y-%m-%d") }} under the retention policy ({{ retention_days }} days). Verdict, evidence, headers and indicators are kept.</p>
+{% endif %}
 {% if email %}
 {% if email.forwarded_inline %}
 <p class="notice">Forwarded inline: the original headers are lost, so only the body and links were analysed.</p>
@@ -206,7 +209,7 @@
 </details>
 {% endif %}
 <h3>Plain text</h3>
-<pre class="body">{{ email.body_text or "(empty)" }}</pre>
+<pre class="body">{{ email.body_text or ("(deleted under the retention policy)" if report.purged_at else "(empty)") }}</pre>
 
 <details>
   <summary>All headers ({{ email.headers|length }})</summary>

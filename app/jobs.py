@@ -109,3 +109,17 @@ def on_report_failure(
         uuid.UUID(str(job.args[0])),
         f"processing failed ({name}); gave up after {MAX_RETRIES} retries",
     )
+
+
+def purge_expired() -> dict[str, int]:
+    """RQ entry point for the daily retention purge (queued by the poller)."""
+    from app.retention import purge_expired as purge
+
+    ctx = get_context()
+    with ctx.sessionmaker() as session:
+        result = purge(session, ctx.store, retention_days=ctx.settings.retention_days)
+    return {
+        "reports": result.reports,
+        "files_deleted": result.files_deleted,
+        "files_kept": result.files_kept,
+    }

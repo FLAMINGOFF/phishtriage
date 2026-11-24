@@ -63,6 +63,19 @@ def enqueue_report(queue: Queue, report_id: uuid.UUID) -> None:
         raise QueueUnavailable(str(exc)) from exc
 
 
+PURGE_FUNCTION = "app.jobs.purge_expired"
+
+
+def enqueue_purge(connection: Redis) -> None:
+    """Queue one run of the retention purge (app.retention)."""
+    get_queue(connection).enqueue(
+        PURGE_FUNCTION,
+        job_timeout=JOB_TIMEOUT_SECONDS,
+        result_ttl=7 * 24 * 3600,
+        failure_ttl=7 * 24 * 3600,
+    )
+
+
 def rq_enqueuer(connection: Redis) -> Enqueue:
     """The production ``enqueue``: put the report on the RQ queue in Redis."""
     queue = get_queue(connection)

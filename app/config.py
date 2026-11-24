@@ -204,6 +204,9 @@ class Settings(BaseSettings):
 
     # Raw messages and attachments (a dedicated volume in Docker, never the database).
     storage_dir: Path = PROJECT_ROOT / "data" / "storage"
+    # Raw messages, attachments and email bodies are deleted this many days after the
+    # report arrived; verdicts, evidence and indicators are kept (app/retention.py).
+    retention_days: int = Field(default=90, ge=1, le=3650)
 
     # Analyst console sessions. Secure cookies need HTTPS; the local http:// demo turns it
     # off (docker-compose.yml), production refuses to.
