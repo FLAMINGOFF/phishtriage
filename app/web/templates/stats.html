@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Statistics · PhishTriage{% endblock %}
+{% block content %}
+<hgroup>
+  <h1>Statistics</h1>
+  <p>Reported emails received since {{ stats.since.strftime("%Y-%m-%d") }} (UTC weeks, Monday to Sunday).</p>
+</hgroup>
+<form method="get" action="/stats" class="period-form">
+  <label>Period
+    <select name="weeks">
+      {% for w in week_choices %}<option value="{{ w }}"{% if stats.weeks == w %} selected{% endif %}>Last {{ w }} weeks</option>{% endfor %}
+    </select>
+  </label>
+  <button type="submit" class="secondary">Show</button>
+</form>
+
+<div class="stat-tiles">
+  <article class="stat-tile">
+    <p class="stat-label">Reported emails</p>
+    <p class="stat-value">{{ stats.total }}</p>
+    <p class="stat-note">{{ stats.pending }} in progress, {{ stats.failed }} failed</p>
+  </article>
+  <article class="stat-tile">
+    <p class="stat-label">Time to verdict, median</p>
+    <p class="stat-value">{{ duration(stats.median_seconds) }}</p>
+    <p class="stat-note">95th percentile {{ duration(stats.p95_seconds) }}, mean {{ duration(stats.mean_seconds) }}</p>
+  </article>
+  <article class="stat-tile">
+    <p class="stat-label">Reviewed by an analyst</p>
+    <p class="stat-value">{{ stats.reviewed }}</p>
+    <p class="stat-note">{{ stats.overruled }} with a different verdict than the automatic one</p>
+  </article>
+  <article class="stat-tile">
+    <p class="stat-label">Replies to reporters</p>
+    <p class="stat-value">{{ stats.replies_sent }}</p>
+    <p class="stat-note">sent from the report mailbox</p>
+  </article>
+</div>
+
+<section>
+  <h2>Reported emails per week</h2>
+  {% if stats.total %}
+  <figure class="week-chart">
+    <svg viewBox="-28 -4 {{ chart.width + 32 }} {{ chart.height + 24 }}" role="img" aria-labelledby="week-chart-title">
+      <title id="week-chart-title">Reported emails per week; the busiest week had {{ stats.week_max }}</title>
+      <line class="axis" x1="0" y1="{{ chart.height }}" x2="{{ chart.width }}" y2="{{ chart.height }}"></line>
+      <text class="tick" x="-6" y="{{ chart.height }}" text-anchor="end" dominant-baseline="middle">0</text>
+      <line class="grid" x1="0" y1="12" x2="{{ chart.width }}" y2="12"></line>
+      <text class="tick" x="-6" y="12" text-anchor="end" dominant-baseline="middle">{{ stats.week_max }}</text>
+      {% for bar in stats.by_week %}
+      <g class="slot">
+        <title>Week of {{ bar.start.isoformat() }}: {{ bar.count }} reported email{{ "" if bar.count == 1 else "s" }}</title>
+        <rect class="hit" x="{{ '%.1f' | format(loop.index0 * chart.slot) }}" y="0" width="{{ '%.1f' | format(chart.slot) }}" height="{{ chart.height }}"></rect>
+        {% if bar.path %}<path class="bar" d="{{ bar.path }}"></path>{% endif %}
+        {% if loop.index0 % ((stats.weeks // 6) or 1) == 0 %}
+        <text class="tick" x="{{ bar.x + bar.width / 2 }}" y="{{ chart.height + 14 }}" text-anchor="middle">{{ bar.label }}</text>
+        {% endif %}
+      </g>
+      {% endfor %}
+    </svg>
+  </figure>
+  <details>
+    <summary>Table</summary>
+    <table class="stats-table">
+      <thead><tr><th>Week of</th><th class="num">Reported emails</th></tr></thead>
+      <tbody>
+      {% for bar in stats.by_week %}<tr><td>{{ bar.start.isoformat() }}</td><td class="num">{{ bar.count }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </details>
+  {% else %}
+  <p class="muted">No reports in this period.</p>
+  {% endif %}
+</section>
+
+<div class="grid">
+<section>
+  <h2>Verdicts</h2>
+  {% if stats.verdicts %}
+  <table class="stats-table">
+    <thead><tr><th>Verdict</th><th class="num">Emails</th><th class="num">Share</th><th class="share-col"><span class="visually-hidden">Bar</span></th></tr></thead>
+    <tbody>
+    {% for share in stats.verdicts %}
+    <tr>
+      <td><span class="badge badge-{{ share.key }}">{{ share.label }}</span></td>
+      <td class="num">{{ share.count }}</td>
+      <td class="num">{{ "%.0f" | format(share.percent) }}%</td>
+      <td class="share-col"><svg class="hbar" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true"><rect class="track" width="100" height="8" rx="2"></rect>{% if share.count %}<rect class="bar" width="{{ '%.1f' | format(share.percent) }}" height="8" rx="2"></rect>{% endif %}</svg></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted"><small>Analysed emails only; the analyst's verdict counts where there is one.</small></p>
+  {% else %}
+  <p class="muted">No analysed reports in this period.</p>
+  {% endif %}
+</section>
+<section>
+  <h2>Channels</h2>
+  {% if stats.sources %}
+  <table class="stats-table">
+    <thead><tr><th>Channel</th><th class="num">Emails</th><th class="num">Share</th></tr></thead>
+    <tbody>
+    {% for share in stats.sources %}<tr><td>{{ share.label }}</td><td class="num">{{ share.count }}</td><td class="num">{{ "%.0f" | format(share.percent) }}%</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No reports in this period.</p>
+  {% endif %}
+</section>
+</div>
+
+<section>
+  <h2>Most frequent rules</h2>
+  {% if stats.top_rules %}
+  <div class="overflow-auto">
+  <table class="stats-table">
+    <thead><tr><th>Rule</th><th class="meaning">Meaning</th><th class="num">Emails</th><th class="num">Of analysed</th></tr></thead>
+    <tbody>
+    {% for rule_id, description, count, percent in stats.top_rules %}
+    <tr><td><code title="{{ description }}">{{ rule_id }}</code></td><td class="meaning">{{ description }}</td><td class="num">{{ count }}</td><td class="num">{{ "%.0f" | format(percent) }}%</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">No rule matched in this period.</p>
+  {% endif %}
+</section>
+{% endblock %}
