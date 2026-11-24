@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install "uv==${UV_VERSION}"
@@ -57,7 +57,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install "uv==${UV_VERSION}"
@@ -78,7 +78,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install "uv==${UV_VERSION}"
@@ -157,7 +157,7 @@ jobs:
             --data-urlencode "password=ci-only-console-password" \
             --data-urlencode "csrf_token=$token" http://127.0.0.1:8000/login
           curl -fsS -c "$jar" -b "$jar" http://127.0.0.1:8000/reports | grep -q "Mailbox quota exceeded"
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install "uv==${UV_VERSION}"
