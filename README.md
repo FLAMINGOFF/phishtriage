@@ -11,14 +11,16 @@ as an attachment, PhishTriage parses and analyses it, looks up threat intelligen
 with explainable rules, replies to the reporter with a verdict, and gives SOC analysts a web
 console to review, re-classify and export IOCs.
 
-> **Status:** under active development. Done: M0 (skeleton), M1 (parsing and IOC
-> extraction), M2 (analyzers and scoring), M3 (queue, worker and threat intelligence),
-> M4 (analyst console, v0.1.0), M5 (report mailbox and verdict replies). See
-> [PROGRESS.md](PROGRESS.md).
+> **Status:** v1.0.0. Every item of the MVP scope is done; how it was built, milestone by
+> milestone, and every design decision are in [PROGRESS.md](PROGRESS.md).
 
 ## Demo
 
-_A GIF of "report → reply → analyst view" is added in M6._
+![An employee reports an email, gets the verdict by email, and the analyst sees the evidence](docs/images/demo.gif)
+
+_An employee reports a phishing email by email; within seconds PhishTriage replies with
+the verdict and its reasons, and the analyst console shows every rule with its evidence.
+All data is synthetic._
 
 ## Why
 
@@ -28,8 +30,6 @@ reporter waits hours for an answer. PhishTriage does the repetitive first pass i
 the same way every time, and shows its evidence so an analyst can confirm or overrule it.
 
 ## Features
-
-Planned for v1.0 (see [PROGRESS.md](PROGRESS.md) for what is done):
 
 - Three intake channels: an IMAP report mailbox, `.eml` upload in the web console, and a REST
   API (`POST /api/reports`).
@@ -41,6 +41,9 @@ Planned for v1.0 (see [PROGRESS.md](PROGRESS.md) for what is done):
 - Automatic verdict replies to internal reporters, with anti-abuse limits.
 - Analyst console: queue, detail view, re-classification, notes, audit log, IOC export
   (CSV, STIX 2.1) and statistics.
+- Data retention: raw emails and attachments are deleted after 90 days; verdicts and IOCs
+  stay.
+- One-command demo with synthetic data, and an evaluation script for labelled mail sets.
 
 ## Architecture
 
@@ -64,10 +67,13 @@ flowchart LR
 | Process | Role |
 | --- | --- |
 | `web` | FastAPI: analyst console, `.eml` upload, REST API, login. Never parses email. |
-| `worker` | RQ worker: parse → analyse → threat intel → score → reply. |
+| `worker` | RQ worker: parse → analyse → threat intel → score → reply; the daily retention purge. |
 | `poller` | Polls the IMAP report mailbox every 30 s and queues new reports. |
-| `db` / `redis` | PostgreSQL 16 for reports and evidence; Redis 7 for the queue, cache and rate limits. |
+| `db` / `redis` | PostgreSQL 16 for reports and evidence; Redis 7 for the queue, cache, rate limits and sessions. |
 | `greenmail` / `mailpit` | Local report mailbox and reply catcher, for development and the demo only. |
+
+How a report travels through these processes, the data model and the retention job:
+[docs/architecture.md](docs/architecture.md).
 
 ## How scoring works
 
@@ -105,7 +111,9 @@ text body and, inside a sandboxed frame, the sanitised HTML body. Analysts can s
 own verdict (the automatic score is kept), add notes, re-run the analysis, download
 attachments as ZIPs encrypted with the password `infected`, and export indicators as CSV
 or as a STIX 2.1 bundle. Logins, verdict changes, notes, downloads and exports are written
-to an audit log that administrators can browse. Details: [docs/console.md](docs/console.md).
+to an audit log that administrators can browse. A statistics page shows reported emails
+per week, the verdict distribution, the time to verdict and how often analysts disagreed
+with the rules. Details: [docs/console.md](docs/console.md).
 
 ## Report mailbox and replies
 
@@ -121,8 +129,9 @@ next time. Details: [docs/mailbox.md](docs/mailbox.md).
 
 ## Security design
 
-Every reported email is treated as attacker-controlled input. Highlights (full STRIDE model
-in `docs/threat-model.md`, M6):
+Every reported email is treated as attacker-controlled input. Highlights (the full STRIDE
+model, with the code and test behind each control, is in
+[docs/threat-model.md](docs/threat-model.md)):
 
 - The server never visits links from emails and never renders their original HTML.
 - Attachments are never executed or uploaded anywhere; only their hashes are looked up.
@@ -138,6 +147,9 @@ in `docs/threat-model.md`, M6):
   tokens on every form, account lock after 5 failed logins in 15 minutes, a strict CSP
   without inline script, and every attacker-controlled string rendered escaped.
 - Secrets come only from environment variables; the policy file rejects unknown keys.
+- Raw emails, attachments and bodies are deleted after 90 days (configurable).
+- CI runs ruff, mypy, the tests on SQLite and PostgreSQL, pip-audit, gitleaks, a Trivy
+  image scan and an end-to-end mail test against the Compose stack.
 - Containers run as an unprivileged user with a read-only root filesystem and no Linux
   capabilities; demo ports are bound to `127.0.0.1`.
 
@@ -177,6 +189,9 @@ Try it with one of the synthetic sample emails:
   Open http://localhost:8025 to read the replies and http://localhost:8000/reports to see
   the reports. `--from outsider@external.example` shows that an external reporter gets
   no reply.
+- A history for the queue and the statistics page: `docker compose run --rm seed` runs
+  150 sample submissions through the real analysis, spread over the last 12 weeks, with
+  some review work by a demo analyst (`scripts/seed_demo.py`; no replies are sent).
 - Upload: log in, open http://localhost:8000/upload and choose a file from
   `tests/fixtures/emails/`. The report page waits for the worker and shows the verdict,
   its evidence and the intel; the queue at http://localhost:8000/reports lists them all.
@@ -221,7 +236,19 @@ extensions, a right-to-left override in a file name and forged authentication he
 
 ## Evaluation
 
-_Precision and recall on a labelled dataset are reported in M6 (`docs/evaluation.md`)._
+`scripts/evaluate.py` runs the rules offline on labelled mail and reports precision,
+recall, false-positive rate, the confusion matrix, a threshold sweep and per-rule hit
+rates. "Positive" is malicious or suspicious; the targets are recall ≥ 90 % and a
+false-positive rate ≤ 5 %.
+
+| Data | Emails | Precision | Recall | False-positive rate |
+| --- | --- | --- | --- | --- |
+| Synthetic samples (`tests/fixtures/emails/`) | 10 phishing, 5 legitimate | 100 % | 100 % | 0 % |
+| Public corpora (phishing_pot or Nazario, SpamAssassin ham) | not run yet | | | |
+
+The synthetic samples were written with the rules, so their 100 % is a regression test,
+not an estimate of real-world accuracy. The method, the commands for the public corpora
+and what to expect from them are in [docs/evaluation.md](docs/evaluation.md).
 
 ## Limitations and roadmap
 
@@ -231,6 +258,16 @@ _Precision and recall on a labelled dataset are reported in M6 (`docs/evaluation
   Workspace tenant.
 - The free VirusTotal API (4 requests/min, 500/day) is for non-commercial use only; a real
   deployment at an institution needs a paid licence.
+- The reply rule trusts the DMARC result that the organisation's mail server writes, so
+  that server must strip forged `Authentication-Results` headers (see
+  [docs/mailbox.md](docs/mailbox.md)).
+- No two-factor authentication for the console yet.
+
+Possible next steps: grouping reports into campaigns ("12 people reported this"), a
+report button for Outlook or Gmail, OAuth2 access to a Microsoft 365 or Gmail test
+mailbox, landing-page screenshots through urlscan.io private scans, pushing confirmed
+IOCs to MISP, YARA rules for attachments, and Slack or Teams alerts for malicious
+verdicts.
 
 ## License
 

@@ -1,7 +1,7 @@
 # Progress
 
 ## Current milestone
-M6 – Hardening, evaluation and presentation (next)
+All milestones done (v1.0.0). Open: the public-corpus evaluation (see Open issues).
 
 ## Done
 - M0 – Skeleton: uv project, ruff/mypy/pytest/pre-commit, settings loader (.env +
@@ -54,9 +54,22 @@ M6 – Hardening, evaluation and presentation (next)
   `docs/mailbox.md`. Acceptance test (`tests/integration/test_mail_flow.py`, run in CI
   against the Compose stack): a sample reported by email is `done` and its reply is in
   Mailpit within one minute; a report from an external address gets no reply.
+- M6 – Hardening, evaluation and presentation: retention purge (raw messages,
+  attachments and bodies after `RETENTION_DAYS`, 90; daily job, `app.cli purge`),
+  statistics page (reports per week, verdicts, time to verdict, reviews, channels, top
+  rules), `scripts/evaluate.py` (precision, recall, false-positive rate, confusion
+  matrix, threshold sweep, per-rule rates; offline), `scripts/seed_demo.py` and the
+  Compose `seed` service, `docs/architecture.md`, `docs/threat-model.md` (STRIDE, with a
+  self-check of every security requirement), `docs/evaluation.md`, a Trivy image scan in
+  CI, the demo GIF, the final README (EN and zh-CN), version 1.0.0. Checked at release:
+  pip-audit reports no known vulnerability in the locked set, and Trivy reports no HIGH
+  or CRITICAL vulnerability with an available fix in the image.
 
 ## Open issues
-- None yet
+- The evaluation on public corpora (phishing_pot or Nazario's corpus against SpamAssassin
+  ham) has not been run: the build environment could not reach the hosts that serve
+  them. `docs/evaluation.md` has the commands; its "Public corpora" section and the
+  README table are to be filled in with the result, and the rule weights tuned from it.
 
 ## Decision log
 - RQ instead of Celery: simpler, enough for a single node (fixed by the plan).
@@ -249,7 +262,51 @@ M6 – Hardening, evaluation and presentation (next)
   report it sent by email.
 - M5: the version in `app/__init__.py` and `pyproject.toml` is `1.0.0.dev0` until M6.
 
+- M6: retention also clears the email bodies stored in the database (`body_text`,
+  `body_html_clean`): they are mailbox content just like the raw file. Headers,
+  findings and indicators stay, so old reports still explain their verdict.
+- M6: one new column, `reports.purged_at`, so the purge is incremental, the page can say
+  what happened, and purged reports are excluded from "Analyse again".
+- M6: blobs are shared between reports (content addressing), so the purge deletes a
+  file only when no report inside the retention period refers to it. Files are deleted
+  before the rows are updated, so an interrupted run is finished by the next one
+  instead of leaving files that nothing points to.
+- M6: the daily purge is queued by the poller (the only process with a timer loop) and
+  run by the worker. A Redis key with a one-day expiry (`SET NX EX`) keeps restarts or
+  several pollers from queueing it more than once a day. RQ 3's own cron scheduler was
+  not used: it would need another container, and it enqueues with RQ's default pickle
+  serializer while our worker only accepts JSON jobs.
+- M6: the purge writes one `retention.purge` audit entry without a user.
+- M6: statistics are computed in Python from plain queries, so the same code runs on
+  SQLite and PostgreSQL (their date arithmetic differs). A "report" is a reported email
+  (an attachment-split submission counts once per email); the analyst's verdict counts
+  where there is one; time to verdict is `analyzed_at - received_at`, median and 95th
+  percentile by nearest rank.
+- M6: the weekly chart is server-rendered SVG with `<title>` tooltips and a table view:
+  no JavaScript chart library and no inline style, so the CSP stays strict.
+- M6: the evaluation runs offline (no intel), so it measures the rules alone; "positive"
+  is malicious or suspicious, as in the plan. `--trust-authserv` lets a corpus's own
+  receiving server count as trusted. The rule weights are still the plan's initial
+  values: tuning them on 15 hand-written samples would only fit those samples.
+- M6: the demo seed runs as an on-demand Compose service (profile `demo`) that mounts
+  `scripts/` and `tests/fixtures/` read-only, because the image deliberately contains
+  neither. Seeded reports go through the real pipeline; only arrival times, worker
+  durations, reporters and review work are simulated, and no reply is sent. The demo
+  analyst account gets a random password nobody knows.
+- M6: Trivy runs from an image pinned by digest, reads the image from a tar file (no
+  Docker socket) and fails CI on HIGH/CRITICAL vulnerabilities that have a fix. Debian
+  CVEs without a fixed package are reported only.
+- M6: `scripts/send_sample.py` now copes with the deliberately broken samples (unknown
+  charset); found while building the demo seed.
+- M6: the demo GIF was recorded with Playwright from the running Compose stack and
+  assembled with ffmpeg; it shows only synthetic data.
+
 ## Manual steps for the user
+- Create the git tags and GitHub releases (this build session could not push tags):
+  `v0.1.0` on commit `c6d5a91` (merge of M4) and `v1.0.0` on the merge commit of M6;
+  release notes are in `releases/` in the project files.
+- Run the public-corpus evaluation (see Open issues and `docs/evaluation.md`) and paste
+  the Markdown tables into `docs/evaluation.md` and the README.
 - Create the first console account: `docker compose exec web python -m app.cli create-user
   you@example.edu --role admin` (asks for a password of 12+ characters).
 - Optional: set `API_TOKEN` in `.env` (at least 32 characters) to enable the REST API.

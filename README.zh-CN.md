@@ -10,11 +10,13 @@
 PhishTriage 自动解析、分析、查询威胁情报，用可解释的规则打分，回信告诉上报人结果；
 SOC 分析员在 Web 后台复核、改判定、导出 IOC。
 
-> **状态：** 开发中。已完成 M0（项目骨架）、M1（邮件解析与 IOC 提取）、M2（分析器与打分）、M3（队列、worker 与威胁情报）、M4（分析员后台，v0.1.0）、M5（上报邮箱与自动回信）。进度见 [PROGRESS.md](PROGRESS.md)。
+> **状态：** v1.0.0。MVP 范围内的功能已全部完成；每个里程碑做了什么、每个设计决定的理由见 [PROGRESS.md](PROGRESS.md)。
 
 ## 演示
 
-_“发送上报 → 收到回信 → 后台详情页”的演示 GIF 在 M6 加入。_
+![员工上报可疑邮件，收到判定回信，分析员在后台查看证据](docs/images/demo.gif)
+
+_员工通过邮件上报一封钓鱼邮件，几秒内 PhishTriage 回信告知判定和原因，分析员在后台能看到每条规则及其证据。所有数据都是合成的。_
 
 ## 为什么做这个
 
@@ -24,8 +26,6 @@ _“发送上报 → 收到回信 → 后台详情页”的演示 GIF 在 M6 加
 
 ## 功能
 
-v1.0 计划包含（已完成的部分见 [PROGRESS.md](PROGRESS.md)）：
-
 - 三个上报入口：IMAP 上报邮箱、后台上传 `.eml`、REST API（`POST /api/reports`）。
 - 稳健的邮件解析：以 `message/rfc822` 附件夹带的原始邮件、内联转发、各种字符集、格式错误的邮件头。
 - 五类分析器（邮件认证、发件人、链接、附件、内容），以及带缓存和限速的威胁情报查询
@@ -33,6 +33,8 @@ v1.0 计划包含（已完成的部分见 [PROGRESS.md](PROGRESS.md)）：
 - 可解释的打分：每个判定都列出规则 ID、分值和证据。
 - 自动给组织内部的上报人回信，并有防滥用限制。
 - 分析员后台：报告队列、详情页、改判定、备注、审计日志、IOC 导出（CSV、STIX 2.1）、统计页。
+- 数据保留：原始邮件和附件 90 天后自动删除，判定和 IOC 保留。
+- 一条命令跑起带合成数据的演示；另有评估脚本，可在带标签的邮件集上算准确率。
 
 ## 架构
 
@@ -56,10 +58,12 @@ flowchart LR
 | 进程 | 职责 |
 | --- | --- |
 | `web` | FastAPI：分析员后台、`.eml` 上传、REST API、登录。从不解析邮件内容。 |
-| `worker` | RQ worker：解析 → 分析 → 情报查询 → 打分 → 回信。 |
+| `worker` | RQ worker：解析 → 分析 → 情报查询 → 打分 → 回信；每天的数据保留清理。 |
 | `poller` | 每 30 秒轮询一次 IMAP 上报邮箱，把新上报放进队列。 |
 | `db` / `redis` | PostgreSQL 16 存报告和证据；Redis 7 做队列、缓存和限速。 |
 | `greenmail` / `mailpit` | 本地上报邮箱和回信收件箱，只用于开发和演示。 |
+
+一份上报怎样在这些进程之间流转、数据模型、数据保留任务，见 [docs/architecture.md](docs/architecture.md)（英文）。
 
 ## 打分规则
 
@@ -89,8 +93,8 @@ Redis 里（VirusTotal 24 小时、URLhaus 1 小时）；VirusTotal 受免费额
 报告详情页显示判定、每条命中规则及其证据、去活后的 IOC 和情报结果、附件、Authentication-Results、
 Received 链路、纯文本正文，以及放在沙箱 iframe 里的清洗后 HTML 正文。分析员可以改判（保留原始分数）、
 写备注、重新分析、把附件下载成密码为 `infected` 的加密 zip，并把 IOC 导出为 CSV 或 STIX 2.1 bundle。
-登录、改判、备注、下载和导出都会写进审计日志，管理员可以在后台查看。细节见
-[docs/console.md](docs/console.md)（英文）。
+登录、改判、备注、下载和导出都会写进审计日志，管理员可以在后台查看。统计页显示每周上报数、判定分布、
+出结果所需时间，以及分析员有多少次推翻了规则的判定。细节见 [docs/console.md](docs/console.md)（英文）。
 
 ## 上报邮箱与自动回信
 
@@ -103,8 +107,8 @@ Received 链路、纯文本正文，以及放在沙箱 iframe 里的清洗后 HT
 
 ## 安全设计
 
-每封上报邮件都当成攻击者可控的输入。要点如下（完整的 STRIDE 威胁模型见 M6 的
-`docs/threat-model.md`）：
+每封上报邮件都当成攻击者可控的输入。要点如下（完整的 STRIDE 威胁模型，以及每项措施对应的代码和测试，见
+[docs/threat-model.md](docs/threat-model.md)，英文）：
 
 - 服务器从不访问邮件里的链接，也从不渲染邮件的原始 HTML。
 - 附件绝不执行、绝不上传到任何地方，只查询哈希；URL 只查询，不提交扫描。
@@ -116,6 +120,8 @@ Received 链路、纯文本正文，以及放在沙箱 iframe 里的清洗后 HT
 - 后台：argon2id 存密码，服务端会话配 HttpOnly/SameSite cookie，所有表单带 CSRF token，
   同一账号 15 分钟内失败 5 次就锁定，严格的 CSP（不允许内联脚本），所有攻击者可控的字符串都转义显示。
 - 密钥只从环境变量读取；策略文件遇到未知字段直接报错。
+- 原始邮件、附件和正文 90 天后自动删除（可配置）。
+- CI 跑 ruff、mypy、SQLite 和 PostgreSQL 上的测试、pip-audit、gitleaks、Trivy 镜像扫描，以及对整套 Compose 服务的端到端邮件测试。
 - 容器以非特权用户运行，根文件系统只读，去掉所有 Linux capabilities；演示端口只绑定 `127.0.0.1`。
 
 ## 快速开始
@@ -153,6 +159,8 @@ docker compose exec web python -m app.cli create-user admin@example.edu --role a
 
   打开 http://localhost:8025 看回信，打开 http://localhost:8000/reports 看报告。
   加上 `--from outsider@external.example` 可以验证外部地址的上报不会收到回信。
+- 给报告队列和统计页加点历史数据：`docker compose run --rm seed` 会把 150 份样例上报跑一遍真实的分析流程，
+  时间分布在最近 12 周，并模拟一位演示分析员的复核（`scripts/seed_demo.py`；不会发回信）。
 - 网页上传：登录后打开 http://localhost:8000/upload ，选择 `tests/fixtures/emails/` 里的任意一封。
   报告页会等 worker 处理完，然后显示判定、证据和情报结果；http://localhost:8000/reports 是报告队列。
 - REST API：在 `.env` 里设置 `API_TOKEN`（至少 32 个字符），重启后提交并等待判定
@@ -193,7 +201,16 @@ GBK 和 ISO-2022-JP、格式错误的邮件头、以 `message/rfc822` 或 `.eml`
 
 ## 评估
 
-_在带标签的数据集上的精确率和召回率在 M6 给出（`docs/evaluation.md`）。_
+`scripts/evaluate.py` 离线跑规则，输出精确率、召回率、误报率、混淆矩阵、阈值扫描和每条规则的命中率。
+“阳性”指判定为恶意或可疑；目标是召回率 ≥ 90%、误报率 ≤ 5%。
+
+| 数据 | 邮件数 | 精确率 | 召回率 | 误报率 |
+| --- | --- | --- | --- | --- |
+| 合成样例（`tests/fixtures/emails/`） | 10 封钓鱼、5 封正常 | 100% | 100% | 0% |
+| 公开语料（phishing_pot 或 Nazario、SpamAssassin ham） | 尚未运行 | | | |
+
+合成样例是和规则一起写的，100% 只说明回归测试通过，不代表真实环境的准确率。方法、在公开语料上运行的命令，
+以及预期会遇到的情况见 [docs/evaluation.md](docs/evaluation.md)（英文）。
 
 ## 局限与路线图
 
@@ -201,6 +218,13 @@ _在带标签的数据集上的精确率和召回率在 M6 给出（`docs/evalua
 - 不从全员邮箱批量删除同类邮件（需要邮件系统管理员权限）。
 - 开发和演示都用本地邮件服务器，不接入真实的 Microsoft 365 或 Google Workspace 租户。
 - VirusTotal 免费 API（每分钟 4 次、每天 500 次）只能用于非商业用途；真正部署到机构需要付费授权。
+- 回信规则信任组织邮件服务器写入的 DMARC 结果，所以这台服务器必须删除外来邮件里伪造的
+  `Authentication-Results` 头（见 [docs/mailbox.md](docs/mailbox.md)）。
+- 后台还没有双因素认证。
+
+后续可以做：把多份上报归成同一波攻击（“已有 12 人上报”）、Outlook 或 Gmail 的一键上报按钮、用 OAuth2
+接入 Microsoft 365 或 Gmail 测试邮箱、通过 urlscan.io 非公开扫描查看落地页截图、把确认的 IOC 推送到 MISP、
+用 YARA 扫描附件、判定为恶意时推送到 Slack 或 Teams。
 
 ## 许可证
 
