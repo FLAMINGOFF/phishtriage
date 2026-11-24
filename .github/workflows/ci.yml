@@ -101,6 +101,27 @@ jobs:
           docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks:v8.30.1
           git --redact --verbose --exit-code 1 .
 
+  image-scan:
+    name: Image scan (Trivy)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Build the image
+        run: docker build --tag phishtriage:ci .
+      - name: Trivy (HIGH and CRITICAL with a fix available)
+        # Pinned by digest: a scanner runs with access to everything it scans. The image is
+        # handed over as a tar file, so the scanner gets no access to the Docker socket.
+        # Debian CVEs without a fixed package are listed but do not fail the build:
+        # nothing can be upgraded until Debian ships the fix.
+        run: |
+          docker save phishtriage:ci -o image.tar
+          docker run --rm -v "$PWD:/work" \
+            aquasec/trivy:0.69.1@sha256:1c78ed1ef824ab8bb05b04359d186e4c1229d0b3e67005faacb54a7d71974f73 \
+            image --input /work/image.tar --scanners vuln --severity HIGH,CRITICAL \
+            --ignore-unfixed --exit-code 1 --no-progress
+
   compose:
     name: Docker Compose smoke test
     runs-on: ubuntu-24.04
