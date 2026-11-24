@@ -1,0 +1,51 @@
+{
+  "emails": [
+    {
+      "attachments": [],
+      "authentication_results": [
+        {
+          "authserv_id": "mx.example.edu",
+          "results": {
+            "dkim": "pass",
+            "dmarc": "pass",
+            "spf": "pass"
+          }
+        }
+      ],
+      "body_text_chars": 371,
+      "defects": [],
+      "forwarded_inline": true,
+      "from": {
+        "address": "bob@example.edu",
+        "display_name": "Bob Reporter",
+        "domain": "example.edu"
+      },
+      "has_html": false,
+      "message_id": "<fwd-07@example.edu>",
+      "observables": [
+        {
+          "defanged": "hxxps://short[.]example/p4rc3l",
+          "type": "url",
+          "value": "https://short.example/p4rc3l"
+        },
+        {
+          "defanged": "short[.]example",
+          "type": "domain",
+          "value": "short.example"
+        }
+      ],
+      "received": [
+        {
+          "by_host": "mx.example.edu",
+          "from_host": "smtp-int.example.edu",
+          "from_ip": "10.20.0.5"
+        }
+      ],
+      "reply_to": [],
+      "return_path": null,
+      "sent_at": "2026-11-24T10:19:58+00:00",
+      "subject": "Fwd: Your parcel is on hold"
+    }
+  ],
+  "mode": "inline"
+}

@@ -1,0 +1,25 @@
+Received: from smtp-int.example.edu (smtp-int.example.edu [10.20.0.5])
+	by mx.example.edu (Postfix) with ESMTPS id R7A
+	for <report-phishing@example.edu>; Tue, 24 Nov 2026 10:20:00 +0000
+Authentication-Results: mx.example.edu; spf=pass smtp.mailfrom=example.edu; dkim=pass header.d=example.edu; dmarc=pass header.from=example.edu
+From: Bob Reporter <bob@example.edu>
+To: report-phishing@example.edu
+Subject: Fwd: Your parcel is on hold
+Date: Tue, 24 Nov 2026 10:19:58 +0000
+Message-ID: <fwd-07@example.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Got this, is it legit?
+
+---------- Forwarded message ---------
+From: Parcel Service <noreply@parcel.example>
+Date: Mon, 23 Nov 2026 at 18:02
+Subject: Your parcel is on hold
+To: <bob@example.edu>
+
+Your parcel could not be delivered. Your account will be closed unless you =
+confirm
+your password and pay the customs fee within 24 hours: https://short.exampl=
+e/p4rc3l

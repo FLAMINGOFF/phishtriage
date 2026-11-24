@@ -1,0 +1,17 @@
+Received: from smtp-int.example.edu (smtp-int.example.edu [10.20.0.7])
+	by mx.example.edu (Postfix) with ESMTPS id 3Int
+	for <alice@example.edu>; Tue, 24 Nov 2026 06:00:01 +0000
+Authentication-Results: mx.example.edu;
+	spf=pass smtp.mailfrom=example.edu;
+	dkim=pass header.d=example.edu;
+	dmarc=pass header.from=example.edu
+From: Library <library@example.edu>
+To: all-staff@example.edu
+Subject: Library opening hours over the holidays
+Date: Tue, 24 Nov 2026 06:00:00 +0000
+Message-ID: <lib-08@example.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+The library closes early on 24 December. Details: https://www.example.edu/library

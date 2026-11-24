@@ -1,0 +1,73 @@
+Received: from smtp-int.example.edu (smtp-int.example.edu [10.20.0.5])
+	by mx.example.edu (Postfix) with ESMTPS id R8A
+	for <report-phishing@example.edu>; Tue, 24 Nov 2026 10:15:02 +0000
+Authentication-Results: mx.example.edu; spf=pass smtp.mailfrom=example.edu; dkim=pass header.d=example.edu; dmarc=pass header.from=example.edu
+From: Bob Reporter <bob@example.edu>
+To: report-phishing@example.edu
+Subject: Fwd: is this phishing?
+Date: Tue, 24 Nov 2026 10:15:00 +0000
+Message-ID: <report-8@example.edu>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="report-8"
+
+--report-8
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Hi, this looks odd to me. - Bob
+--report-8
+Content-Type: message/rfc822; name="Suspicious message 1.eml"
+Content-Disposition: attachment; filename="Suspicious message 1.eml"
+
+Received: from smtp-int.example.edu (smtp-int.example.edu [10.20.0.7])
+	by mx.example.edu (Postfix) with ESMTPS id 3Int
+	for <alice@example.edu>; Tue, 24 Nov 2026 06:00:01 +0000
+Authentication-Results: mx.example.edu;
+	spf=pass smtp.mailfrom=example.edu;
+	dkim=pass header.d=example.edu;
+	dmarc=pass header.from=example.edu
+From: Library <library@example.edu>
+To: all-staff@example.edu
+Subject: Library opening hours over the holidays
+Date: Tue, 24 Nov 2026 06:00:00 +0000
+Message-ID: <lib-08@example.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+The library closes early on 24 December. Details: https://www.example.edu/library
+
+--report-8
+Content-Type: message/rfc822; name="Suspicious message 2.eml"
+Content-Disposition: attachment; filename="Suspicious message 2.eml"
+
+Received: from out.vendor.example (out.vendor.example [198.51.100.99])
+	by mx.example.edu (Postfix) with ESMTPS id 6Pay
+	for <alice@example.edu>; Tue, 24 Nov 2026 05:45:00 +0000
+Authentication-Results: mx.example.edu;
+	spf=pass smtp.mailfrom=vendor.example;
+	dkim=pass header.d=vendor.example;
+	dmarc=pass header.from=vendor.example
+From: Vendor Payments <payments@vendor.example>
+To: alice@example.edu
+Subject: Payment advice
+Date: Tue, 24 Nov 2026 05:44:58 +0000
+Message-ID: <pay-09@vendor.example>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="mixed-09"
+
+--mixed-09
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Remittance details are attached. Portal: https://xn--pypal-4ve.example/remit
+--mixed-09
+Content-Type: text/html; name="Payment_Advice.html"
+Content-Disposition: attachment; filename="Payment_Advice.html"
+Content-Transfer-Encoding: base64
+
+PGh0bWw+PGJvZHk+PHNjcmlwdD53aW5kb3cubG9jYXRpb249J2h0dHBzOi8vcGF5LmV2aWwuZXhh
+bXBsZS8nPC9zY3JpcHQ+TG9hZGluZyBwYXltZW50IGFkdmljZS4uLjwvYm9keT48L2h0bWw+
+--mixed-09--
+
+--report-8--
