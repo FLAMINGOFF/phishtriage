@@ -59,25 +59,33 @@ def test_api_create_and_get(client: TestClient, fixture_bytes: Loader) -> None:
         content=fixture_bytes("08"),
         headers={**AUTH, "Content-Type": "message/rfc822; charset=utf-8"},
     )
-    assert response.status_code == 201, response.text
+    assert response.status_code == 202, response.text
+    accepted = response.json()
+    assert accepted["status"] == "queued"  # the worker does the analysis
+    assert accepted["source"] == "api"
+    assert response.headers["location"] == f"/api/reports/{accepted['id']}"
+
+    # The test app's queue runs the job at once, so the report is already processed.
+    response = client.get(response.headers["location"], headers=AUTH)
+    assert response.status_code == 200
     body = response.json()
+    assert body["id"] == accepted["id"]
     assert body["status"] == "done"
-    assert body["source"] == "api"
     assert body["intake_mode"] == "attachment"
     assert len(body["related"]) == 1  # two originals attached: one extra report
-
-    child_id = body["related"][0]
-    child = client.get(f"/api/reports/{child_id}", headers=AUTH).json()
-    assert child["verdict"] == "suspicious"
-    assert {f["rule_id"] for f in child["findings"]} >= {"ATT_HTML_FILE", "URL_PUNYCODE"}
     assert body["verdict"] == "no_issues"
     assert body["score"] == 0
 
-    response = client.get(f"/api/reports/{body['id']}", headers=AUTH)
-    assert response.status_code == 200
-    assert response.json()["id"] == body["id"]
-    child = client.get(f"/api/reports/{body['related'][0]}", headers=AUTH).json()
+    child_id = body["related"][0]
+    child = client.get(f"/api/reports/{child_id}", headers=AUTH).json()
     assert child["parent_id"] == body["id"]
+    assert child["verdict"] == "suspicious"
+    assert {f["rule_id"] for f in child["findings"]} >= {"ATT_HTML_FILE", "URL_PUNYCODE"}
+    # No intel keys in tests: every lookup is listed as skipped, with the reason.
+    intel = [i for o in child["observables"] for i in o["intel"]]
+    assert intel
+    assert {i["status"] for i in intel} == {"skipped"}
+    assert any("VT_API_KEY" in (i["detail"] or "") for i in intel)
 
     assert client.get(f"/api/reports/{body['id']}").status_code == 401
     missing = "00000000-0000-0000-0000-000000000000"
@@ -87,9 +95,63 @@ def test_api_create_and_get(client: TestClient, fixture_bytes: Loader) -> None:
 
 def test_api_rejected_message_is_reported(client: TestClient) -> None:
     response = client.post("/api/reports", content=b"\x00\x01junk", headers={**AUTH, **RFC822})
-    assert response.status_code == 201
-    assert response.json()["status"] == "failed"
-    assert response.json()["error"].startswith("rejected: ")
+    assert response.status_code == 202
+    report = client.get(response.headers["location"], headers=AUTH).json()
+    assert report["status"] == "failed"
+    assert report["error"].startswith("rejected: ")
+
+
+def test_queue_unavailable(
+    app_factory: Callable[..., FastAPI], fixture_bytes: Loader, session_factory
+) -> None:
+    from app.db.models import Report, ReportStatus
+    from app.queueing import QueueUnavailable
+
+    def broken(_report_id: object) -> None:
+        raise QueueUnavailable("connection refused")
+
+    client = TestClient(app_factory(api_token=TOKEN, enqueue=broken))
+    response = client.post("/api/reports", content=fixture_bytes("01"), headers={**AUTH, **RFC822})
+    assert response.status_code == 503
+    response = client.post("/upload", files={"file": ("x.eml", fixture_bytes("01"))})
+    assert response.status_code == 503
+    assert "could not be queued" in response.text
+    with session_factory() as session:
+        reports = session.query(Report).all()
+    assert len(reports) == 2  # stored, so nothing is lost; `app.cli requeue` retries them
+    assert {r.status for r in reports} == {ReportStatus.FAILED}
+    assert all("could not be queued" in (r.error or "") for r in reports)
+
+
+def test_report_page_polls_until_done(
+    app_factory: Callable[..., FastAPI], fixture_bytes: Loader, make_settings, worker_context
+) -> None:
+    from app.jobs import run_report
+
+    queued: list[object] = []
+    client = TestClient(app_factory(enqueue=queued.append))
+    response = client.post(
+        "/upload", files={"file": ("x.eml", fixture_bytes("02"))}, follow_redirects=False
+    )
+    location = response.headers["location"]
+    page = client.get(location).text
+    assert "Waiting in the queue" in page
+    assert f'hx-get="{location}/status"' in page
+    status = client.get(f"{location}/status")
+    assert status.status_code == 200
+    assert "HX-Refresh" not in status.headers
+    assert 'hx-trigger="every 2s"' in status.text
+
+    assert len(queued) == 1
+    run_report(worker_context(make_settings()), queued[0])  # the worker picks it up
+
+    status = client.get(f"{location}/status")
+    assert status.headers["hx-refresh"] == "true"
+    page = client.get(location).text
+    assert "Waiting in the queue" not in page
+    assert "Malicious" in page
+    assert "Not looked up:" in page
+    assert client.get("/reports/00000000-0000-0000-0000-000000000000/status").status_code == 404
 
 
 def test_api_body_limit(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:

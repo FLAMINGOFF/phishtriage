@@ -1,0 +1,5 @@
+<p id="report-status" class="notice" aria-live="polite"
+   hx-get="/reports/{{ report.id }}/status" hx-trigger="every 2s" hx-swap="outerHTML">
+  <span aria-busy="true">{{ "Waiting in the queue" if report.status.value == "queued" else "Analysing" }}</span>
+  This page updates by itself. <a href="/reports/{{ report.id }}">Reload</a>
+</p>

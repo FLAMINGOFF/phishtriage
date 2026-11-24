@@ -13,3 +13,7 @@ table code { word-break: break-all; }
 .verdict-no_issues { border-left-color: #2e7d32; }
 .findings ul { margin: 0; padding-left: 1rem; }
 .findings code { word-break: break-all; }
+.intel { white-space: nowrap; }
+.intel-hit { color: #c62828; font-weight: 600; }
+.intel-error { color: var(--pico-muted-color); font-style: italic; }
+.intel-rdap.intel-hit { color: inherit; font-weight: normal; } /* a date, not a verdict */

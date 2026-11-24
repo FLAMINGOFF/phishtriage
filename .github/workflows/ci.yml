@@ -120,13 +120,10 @@ jobs:
         run: >-
           docker compose exec -T web python -c
           "from app.parsing.filetype import detect_type as d; t = d(b'%PDF-1.4 x'); print(t); assert t == 'application/pdf'"
-      - name: Submit a sample report through the API
-        run: |
-          curl --fail --silent --show-error -o report.json \
-            -H "Authorization: Bearer ${API_TOKEN}" -H "Content-Type: message/rfc822" \
-            --data-binary @tests/fixtures/emails/02_html_link_mismatch_b64.eml \
-            http://127.0.0.1:8000/api/reports
-          python3 -c "import json; r = json.load(open('report.json')); print(r['id'], r['status'], r['verdict']); assert r['status'] == 'done' and r['verdict'] == 'malicious', r"
+      - name: Submit a sample report through the API; the worker analyses it
+        run: >-
+          python3 scripts/submit_report.py --timeout 120 --expect-verdict malicious
+          tests/fixtures/emails/02_html_link_mismatch_b64.eml
       - name: Show state on failure
         if: failure()
         run: |

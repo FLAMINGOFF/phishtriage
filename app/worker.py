@@ -1,7 +1,8 @@
 """RQ worker: the only process that ever parses or analyses a reported email.
 
-Run with ``python -m app.worker``. In M0 the worker just consumes the queue; the analysis
-pipeline (parse, analyse, intel, score, reply) is added in later milestones.
+Run with ``python -m app.worker``. Jobs are defined in app.jobs and queued by app.queueing.
+The worker also runs RQ's scheduler, which re-queues failed jobs after their back-off.
+Several workers can run side by side; the VirusTotal rate limit is shared through Redis.
 """
 
 from __future__ import annotations
@@ -9,24 +10,14 @@ from __future__ import annotations
 import logging
 
 from redis import Redis
-from rq import Queue, Worker
-from rq.serializers import JSONSerializer
+from rq import Worker
 
 from app.config import get_settings
 from app.log import configure_logging
+from app.queueing import QUEUE_NAME, SERIALIZER, get_queue
 from app.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
-
-QUEUE_NAME = "reports"
-
-# Jobs only ever carry a report ID, so JSON is enough. RQ's default (pickle) would turn
-# "someone can write to Redis" into "someone can run code in the worker".
-SERIALIZER = JSONSerializer
-
-
-def get_queue(connection: Redis | None = None) -> Queue:
-    return Queue(QUEUE_NAME, connection=connection or get_redis(), serializer=SERIALIZER)
 
 
 def build_worker(connection: Redis) -> Worker:
@@ -36,9 +27,16 @@ def build_worker(connection: Redis) -> Worker:
 def main() -> None:
     settings = get_settings()
     configure_logging(settings.log_level)
+    # Build the job context now, so a bad configuration stops the worker at start-up
+    # instead of failing every job.
+    from app.jobs import get_context
+
+    get_context()
     worker = build_worker(get_redis())
     logger.info("worker %s listening on queue %r", worker.name, QUEUE_NAME)
-    worker.work(logging_level=settings.log_level)
+    # with_scheduler: retries with a back-off are "scheduled" jobs; without a scheduler
+    # running somewhere they would never run again.
+    worker.work(with_scheduler=True, logging_level=settings.log_level)
 
 
 if __name__ == "__main__":

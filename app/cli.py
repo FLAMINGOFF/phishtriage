@@ -6,6 +6,10 @@ Commands:
   the result as JSON. ``--wrapper`` treats it as a report from the report mailbox.
 * ``check-config``: validate settings and policy and print a summary with secrets masked.
   Handy as ``docker compose run --rm web python -m app.cli check-config``.
+* ``requeue [ID ...] [--failed] [--stuck-minutes N]``: hand reports to the worker again,
+  e.g. after Redis was down when they arrived.
+
+``analyze`` never calls a threat-intel provider; only the worker does.
 """
 
 from __future__ import annotations
@@ -13,8 +17,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import uuid
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, TextIO
 from urllib.parse import urlsplit, urlunsplit
@@ -52,8 +57,11 @@ def describe(settings: Settings) -> list[str]:
         f"redis:         {redact_url(settings.redis_url)}",
         f"imap:          {settings.imap_user} @ {settings.imap_host}:{settings.imap_port}"
         f" ({'TLS' if settings.imap_ssl else 'plain'})",
-        f"virustotal:    {_configured(settings.vt_api_key)}",
+        f"virustotal:    {_configured(settings.vt_api_key)}"
+        f" ({settings.vt_rate_per_minute}/min, {settings.vt_daily_budget}/day,"
+        f" {settings.vt_max_lookups_per_report} per report)",
         f"urlhaus:       {_configured(settings.urlhaus_auth_key)}",
+        f"rdap:          {'enabled' if settings.rdap_enabled else 'disabled'}",
         f"org domains:   {', '.join(policy.org_domains)}",
         f"trusted authserv-ids: {', '.join(policy.trusted_authserv_ids) or '(none)'}",
         f"protected:     {len(policy.protected_domains)} domain(s), "
@@ -154,6 +162,41 @@ def cmd_analyze(args: argparse.Namespace, out: TextIO) -> int:
     return 0
 
 
+def cmd_requeue(args: argparse.Namespace, out: TextIO) -> int:
+    from app.db.session import get_sessionmaker
+    from app.ingest.submission import requeue_reports
+    from app.queueing import QueueUnavailable, rq_enqueuer
+    from app.redis_client import redis_client
+
+    try:
+        settings = get_settings()
+        ids = [uuid.UUID(value) for value in args.report_ids]
+    except (ConfigError, ValidationError) as exc:
+        print(f"configuration error: {exc}", file=sys.stderr)
+        return 2
+    except ValueError:
+        print("report IDs must be UUIDs", file=sys.stderr)
+        return 2
+    stuck_before = (
+        datetime.now(UTC) - timedelta(minutes=args.stuck_minutes)
+        if args.stuck_minutes is not None
+        else None
+    )
+    enqueue = rq_enqueuer(redis_client(settings.redis_url))
+    with get_sessionmaker()() as session:
+        try:
+            queued = requeue_reports(
+                session, enqueue, ids, failed=args.failed, stuck_before=stuck_before
+            )
+        except QueueUnavailable as exc:
+            print(f"queue unavailable: {exc}", file=sys.stderr)
+            return 1
+    print(f"queued {len(queued)} report(s)", file=out)
+    for report_id in queued:
+        print(report_id, file=out)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m app.cli", description="PhishTriage CLI")
     parser.add_argument("--version", action="version", version=f"PhishTriage {__version__}")
@@ -166,6 +209,16 @@ def build_parser() -> argparse.ArgumentParser:
     analyze.set_defaults(handler=cmd_analyze)
     check = sub.add_parser("check-config", help="validate configuration and print a summary")
     check.set_defaults(handler=cmd_check_config)
+    requeue = sub.add_parser("requeue", help="hand reports to the worker again")
+    requeue.add_argument("report_ids", nargs="*", metavar="ID", help="report IDs")
+    requeue.add_argument("--failed", action="store_true", help="all failed reports")
+    requeue.add_argument(
+        "--stuck-minutes",
+        type=int,
+        metavar="N",
+        help="reports still queued or analysing N minutes after they arrived",
+    )
+    requeue.set_defaults(handler=cmd_requeue)
     return parser
 
 

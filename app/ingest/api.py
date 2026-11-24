@@ -1,7 +1,8 @@
 """REST API for automation and tests.
 
-``POST /api/reports`` takes a raw message (``Content-Type: message/rfc822``) and returns
-the new report's ID; ``GET /api/reports/{id}`` returns its status and results.
+``POST /api/reports`` takes a raw message (``Content-Type: message/rfc822``), queues it
+and answers ``202 Accepted`` with the new report (status ``queued``); poll
+``GET /api/reports/{id}`` until the status is ``done`` or ``failed``.
 Authentication is a bearer token (``API_TOKEN``); without one configured the API is off.
 Cookies are never accepted here, so cross-site requests cannot use an analyst's session.
 """
@@ -14,7 +15,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -23,6 +24,7 @@ from app.config import Settings
 from app.db.models import Report, ReportSource
 from app.ingest.submission import accept_submission
 from app.parsing.eml import MAX_MESSAGE_BYTES
+from app.queueing import QueueUnavailable
 from app.web.deps import get_app_settings, get_session, read_body_limited
 
 router = APIRouter(prefix="/api", tags=["api"])
@@ -46,10 +48,19 @@ def require_api_token(
         )
 
 
+class IntelOut(BaseModel):
+    provider: str
+    status: str
+    malicious_count: int | None
+    detail: str | None
+    fetched_at: datetime | None
+
+
 class ObservableOut(BaseModel):
     type: str
     value: str
     defanged: str
+    intel: list[IntelOut]
 
 
 class FindingOut(BaseModel):
@@ -103,16 +114,31 @@ class ReportOut(BaseModel):
                 for f in report.findings
             ],
             observables=[
-                ObservableOut(type=o.type.value, value=o.value, defanged=o.defanged)
+                ObservableOut(
+                    type=o.type.value,
+                    value=o.value,
+                    defanged=o.defanged,
+                    intel=[
+                        IntelOut(
+                            provider=r.provider.value,
+                            status=r.status.value,
+                            malicious_count=r.malicious_count,
+                            detail=r.detail,
+                            fetched_at=r.fetched_at,
+                        )
+                        for r in o.intel_results
+                    ],
+                )
                 for o in report.observables
             ],
             related=[child.id for child in report.children],
         )
 
 
-@router.post("/reports", status_code=201, dependencies=[Depends(require_api_token)])
+@router.post("/reports", status_code=202, dependencies=[Depends(require_api_token)])
 async def create_report(
     request: Request,
+    response: Response,
     session: Annotated[Session, Depends(get_session)],
     reporter_email: Annotated[str | None, Query(max_length=320)] = None,
 ) -> ReportOut:
@@ -124,14 +150,18 @@ async def create_report(
     raw = await read_body_limited(request, MAX_MESSAGE_BYTES)
     if not raw.strip():
         raise HTTPException(422, "empty message")
-    report = await run_in_threadpool(
-        accept_submission,
-        request.app,
-        session,
-        raw,
-        source=ReportSource.API,
-        reporter_email=reporter_email,
-    )
+    try:
+        report = await run_in_threadpool(
+            accept_submission,
+            request.app,
+            session,
+            raw,
+            source=ReportSource.API,
+            reporter_email=reporter_email,
+        )
+    except QueueUnavailable as exc:
+        raise HTTPException(503, "stored, but the queue is unavailable; try again later") from exc
+    response.headers["Location"] = f"/api/reports/{report.id}"
     return ReportOut.of(report)
 
 

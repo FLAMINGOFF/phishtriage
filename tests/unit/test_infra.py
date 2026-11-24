@@ -13,7 +13,7 @@ from fakeredis import FakeRedis
 from rq.serializers import JSONSerializer
 from sqlalchemy import inspect, text
 
-from app import __version__, worker
+from app import __version__, queueing, worker
 from app.config import EXAMPLE_SETTINGS_FILE, SETTINGS_FILE_ENV
 from app.db.models import Base
 from app.db.session import make_engine, ping_database
@@ -25,7 +25,7 @@ def test_worker_listens_on_reports_queue_with_json() -> None:
     conn = FakeRedis()
     built = worker.build_worker(conn)
     assert built.queue_names() == ["reports"]
-    assert worker.get_queue(conn).serializer is JSONSerializer
+    assert queueing.get_queue(conn).serializer is JSONSerializer
 
 
 def test_make_engine_sets_connect_timeout_for_postgres() -> None:

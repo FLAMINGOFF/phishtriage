@@ -20,7 +20,8 @@ from app.db.session import get_engine, get_sessionmaker, ping_database
 from app.ingest import api, upload
 from app.log import configure_logging
 from app.parsing.eml import MAX_MESSAGE_BYTES
-from app.redis_client import ping_redis
+from app.queueing import Enqueue, rq_enqueuer
+from app.redis_client import ping_redis, redis_client
 from app.storage import BlobStore
 from app.web.routes import health, reports
 from app.web.routes.health import Probe
@@ -43,6 +44,7 @@ def create_app(
     probes: Mapping[str, Probe] | None = None,
     session_factory: sessionmaker[Session] | None = None,
     store: BlobStore | None = None,
+    enqueue: Enqueue | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level)
@@ -61,6 +63,8 @@ def create_app(
     app.state.probes = dict(probes) if probes is not None else default_probes(settings)
     app.state.sessionmaker = session_factory or get_sessionmaker()
     app.state.store = store or BlobStore(settings.storage_dir)
+    # How submissions reach the worker; tests pass a synchronous stand-in.
+    app.state.enqueue = enqueue or rq_enqueuer(redis_client(settings.redis_url))
 
     # Order: the size limit wraps everything, so oversized bodies never reach a handler.
     app.add_middleware(
