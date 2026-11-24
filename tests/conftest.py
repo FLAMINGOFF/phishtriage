@@ -103,6 +103,31 @@ def fixture_bytes():
     return load
 
 
+# --------------------------------------------------------------------------- network, Redis
+
+
+@pytest.fixture(autouse=True)
+def http_mock():
+    """Tests never reach the network: an httpx request without a matching route fails.
+
+    Tests that exercise a provider client add routes to this router (``http_mock.get(...)``).
+    """
+    import respx
+
+    with respx.mock(assert_all_called=False) as router:
+        yield router
+
+
+@pytest.fixture
+def fake_redis():
+    from fakeredis import FakeRedis
+
+    return FakeRedis()
+
+
+# --------------------------------------------------------------------------- app
+
+
 @pytest.fixture
 def app_factory(make_settings, session_factory, store):
     """Build the FastAPI app against the test database and blob store."""
