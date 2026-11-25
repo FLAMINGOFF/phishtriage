@@ -244,11 +244,17 @@ false-positive rate ≤ 5 %.
 | Data | Emails | Precision | Recall | False-positive rate |
 | --- | --- | --- | --- | --- |
 | Synthetic samples (`tests/fixtures/emails/`) | 10 phishing, 5 legitimate | 100 % | 100 % | 0 % |
-| Public corpora (phishing_pot or Nazario, SpamAssassin ham) | not run yet | | | |
+| Nazario 2021 + SpamAssassin ham (default policy, offline) | 101 phishing, 2,750 legitimate | 6.25% | 2.97% | 1.64% |
+| Same public corpora (fixed brand policy, offline) | 101 phishing, 2,750 legitimate | 6.00% | 2.97% | 1.71% |
 
 The synthetic samples were written with the rules, so their 100 % is a regression test,
 not an estimate of real-world accuracy. The method, the commands for the public corpora
-and what to expect from them are in [docs/evaluation.md](docs/evaluation.md).
+and measured results are in [docs/evaluation.md](docs/evaluation.md).
+
+**The public-corpus recall target was not met:** both policies detected only 3 of 101
+phishing messages. This historical offline baseline does not establish production
+accuracy. The report records data hashes, confusion matrices, false-alarm/miss
+patterns and the [reproducible Actions run](https://github.com/FLAMINGOFF/phishtriage/actions/runs/45516152754).
 
 ## Limitations and roadmap
 
