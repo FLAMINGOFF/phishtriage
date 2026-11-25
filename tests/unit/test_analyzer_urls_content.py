@@ -212,13 +212,16 @@ def test_attachment_text_is_static_and_bounded(example_policy: Policy) -> None:
         assert "CONTENT_CREDENTIAL_REQUEST" not in run(content.analyze, raw, example_policy)
 
 
-def test_html_attachment_byte_and_count_limits(example_policy: Policy) -> None:
-    from app.analyzers.html_content import MAX_ATTACHMENT_BYTES, MAX_HTML_ATTACHMENTS
+def test_html_attachment_byte_and_count_limits(example_policy: Policy, monkeypatch) -> None:
+    from app.analyzers import html_content
+
+    # Exercise the analyzer's own cap below the parser's independent 20-file limit.
+    monkeypatch.setattr(html_content, "MAX_HTML_ATTACHMENTS", 2)
 
     field = '<input type="password">'
     for prefix in (
-        [("large.html", "text/html", b" " * MAX_ATTACHMENT_BYTES)],
-        [("empty.html", "text/html", b"notes")] * MAX_HTML_ATTACHMENTS,
+        [("large.html", "text/html", b" " * html_content.MAX_ATTACHMENT_BYTES)],
+        [("empty.html", "text/html", b"notes")] * html_content.MAX_HTML_ATTACHMENTS,
     ):
         raw = message(attachments=[*prefix, ("login.html", "text/html", field.encode())])
         assert "URL_CREDENTIAL_FORM" not in run(urls.analyze, raw, example_policy)
