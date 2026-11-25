@@ -227,6 +227,37 @@ checksum, brand-policy and analysis-error checks. The existing rule and policy h
 are in the aggregate JSON. No weights were tuned during this evaluation; future
 improvements need a separate held-out corpus before making accuracy claims.
 
+## Third measurement after the account-alert follow-up — 2026-11-25
+
+The four reported lures now trigger the credential-request rule in regression tests.
+The four routine subscription, billing, address-change and security notices from the
+prior review still pass their negative tests. We used the development split and
+these regression cases to check the change. The detector was frozen at
+`7d02e51abfea7c5e8e9a98691a16fc1d264fce04` before the single final run.
+
+**This is the third measurement on the same held-out data.** The first two results
+were already known. The final run reproduced the local development result and used
+the same corpus checksums, split, scoring weights and thresholds as the second run.
+
+| Dataset | Second → third detections | Second → third false alarms | Third recall | Third FPR |
+| --- | ---: | ---: | ---: | ---: |
+| Development (58 phishing, 1,395 ham) | 9 → 9 | 7 → 7 | 15.52% | 0.50% |
+| 2021 held-out (43 phishing, 1,355 ham) | 3 → 3 | 6 → 6 | 6.98% | 0.44% |
+| 2025 (481 phishing only) | 52 → 53 | N/A | 11.02% | N/A |
+| 2021 held-out with the selected mail server trusted | 3 → 3 | 6 → 6 | 6.98% | 0.44% |
+
+On 2021 held-out mail, all recorded aggregates matched the second measurement.
+The detector missed 40 of 43 phishing messages. On 2025 mail, the credential rule
+matched 83 messages, up from 82, and 53 of 481 reached a positive verdict, up from
+52. That collection contains only phishing. The 0.44% false-positive rate comes
+from legitimate mail collected in 2003, including in the authentication sensitivity
+row. Estimating current performance requires independently held-out recent mail.
+
+No parser rejections or analyzer errors occurred. Locally, 669 tests passed with
+96.90% coverage, three were skipped and three live tests were deselected. Ruff,
+mypy and the synthetic verdict check passed. [Third measurement](https://github.com/FLAMINGOFF/phishtriage/actions/runs/45529879963) ·
+[Aggregate JSON](public-corpus-2026-11-25-account-context.json) · [Second measurement](public-corpus-2026-11-25-review.json).
+
 ## Second measurement after PR review — 2026-11-25
 
 Review supplied four legitimate messages about subscription activation, monthly

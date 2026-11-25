@@ -2,8 +2,8 @@
 
 ## Current milestone
 M0–M6 implementation complete (v1.0.0). Releases and public-corpus baseline are published.
-The reviewed detector caught 3/43 phishing messages (6.98%) on a second measurement of the
-same held-out set. The 90% recall target remains unmet.
+The account-alert follow-up caught 3/43 phishing messages (6.98%) on a third measurement
+of the same 2021 held-out set. The 90% recall target remains unmet.
 
 ## Done
 - M0 – Skeleton: uv project, ruff/mypy/pytest/pre-commit, settings loader (.env +
@@ -99,8 +99,15 @@ same held-out set. The 90% recall target remains unmet.
   [Review run](https://github.com/FLAMINGOFF/phishtriage/actions/runs/45528438262)
   and [aggregate results](docs/public-corpus-2026-11-25-review.json).
 
+## Account-alert follow-up — 2026-11-25
+- All four reported lures now trigger the credential rule. The four routine notices
+  in the prior review still pass their negative tests.
+- The third measurement reproduced the prior 2021 held-out counts (3/43 phishing
+  detected, 6/1,355 false alarms). The 2025 positive-only corpus went from 52 to
+  53 detections out of 481. [Aggregate results](docs/public-corpus-2026-11-25-account-context.json).
+
 ## Open issues
-- Recall remains far below 90%: 40/43 held-out 2021 messages and 429/481 later messages
+- Recall remains far below 90%: 40/43 held-out 2021 messages and 428/481 later messages
   are missed. Many have no scoring evidence; single credential/link cues also fall
   below 40. Do not treat synthetic regression tests as real-world accuracy.
 - Need contemporary legitimate mail, campaign-aware separation, independent labels,
@@ -111,6 +118,12 @@ same held-out set. The 90% recall target remains unmet.
   trigger false positives. Authentication FPR needs modern ham through a trusted MX.
 
 ## Decision log
+- Follow-up to PR #12: let a stated account lockout, suspension or detected unusual
+  activity support a generic English request from the same or an immediately adjacent
+  sentence, within 240 characters in the same field and paragraph. Reserve the wider
+  window for account alerts. “Now” or “immediately” alone provides no evidence, but
+  it can reinforce an explicit time-pressure statement in the request clause. Keep
+  the 35-point weight, verdict thresholds and the prior routine-mail regressions.
 - PR #12 review: keep the 35-point credential weight, but require credentials, an
   access threat or a deadline in the same clause as a generic English account or
   sign-in request. A routine subscription, statement, address change or two-factor

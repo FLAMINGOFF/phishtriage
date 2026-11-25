@@ -94,6 +94,12 @@ Rule details that matter in practice:
   update an account or sign in to view a document require nearby language about
   credentials, a threat or a deadline. A routine subscription confirmation or monthly
   statement can therefore mention signing in without adding 35 points.
+  An explicit warning about a suspended or locked account, or a report of detected
+  unusual activity, can also occur in the preceding or following sentence within the
+  same paragraph and field. Credentials and deadlines still apply within the request
+  clause. “Confirm your mailbox now” needs corroboration. For example, “no time to
+  waste” in that clause supplies time pressure when “now” or “immediately” directly
+  accompanies the request. The evidence includes the qualifying words.
   Phrases such as “never share your password” and “no verification is required” can
   negate a request. In “No fees apply: verify your account within 24 hours or lose
   access”, the first clause refers to fees and the second still triggers the rule.

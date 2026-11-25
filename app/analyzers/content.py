@@ -37,7 +37,7 @@ CREDENTIAL_PATTERNS = [
     ),
     re.compile(r"(?:验证|确认|核实)(?:您的|你的)?(?:身份|账户|账号|邮箱)"),
 ]
-# Ordinary account requests need independent evidence in the same clause.
+# Ordinary account requests need corroborating evidence before they score.
 _ACCOUNT_REQUESTS = [
     re.compile(
         r"\b(?:verify|confirm|validate|re-?activate|update)\s+(?:your\s+)?"
@@ -66,18 +66,32 @@ _ACCOUNT_REQUESTS = [
         re.IGNORECASE,
     ),
 ]
-_CLAUSE_BREAK = re.compile(r"[.!?;。]|\n[ \t\r]*\n")
+_CLAUSE_BREAK = re.compile(r"(?P<sentence>[.!?。]+)|;|\n[ \t\r]*\n")
 _ACCOUNT_CONTEXT = re.compile(
     rf"\b(?:{_ASKED_FOR}|within\s+(?:the\s+next\s+)?(?:\d{{1,3}}|one|an?)\s+"
     r"(?:minutes?|hours?|hrs?|days?)|by\s+(?:midnight|noon|tonight|tomorrow)|"
     r"(?:before|by)\s+the\s+end\s+of\s+(?:the\s+day|today)|"
     r"(?:los(?:e|ing)|denied)\s+(?:your\s+)?access|"
-    r"(?:account|mailbox|access)\s+(?:(?:will|may)\s+be|is|has\s+been)\s+"
-    r"(?:suspended|disabled|closed|deactivated|terminated|locked|deleted|blocked|restricted)|"
     r"(?:avoid|prevent)\s+(?:account\s+)?(?:suspension|deactivation|closure)|"
     r"keep\s+(?:(?:your\s+)?(?:account|mailbox)\s+active|receiving\s+(?:your\s+)?(?:e-?)?mail))\b",
     re.IGNORECASE,
 )
+_ACTIVITY = r"(?:unusual|suspicious)\s+(?:(?:sign[- ]in|login|account)\s+)?activity"
+_ACCOUNT_ALERT = re.compile(
+    r"\b(?:(?:account|mailbox|access)\s+(?:(?:will|may)\s+be|is|has\s+been)\s+"
+    r"(?:suspended|disabled|closed|deactivated|terminated|locked|deleted|blocked|restricted)|"
+    r"you\s+(?:are|have\s+been|will\s+be)\s+locked\s+out|"
+    rf"(?:detected|noticed|identified)\s+{_ACTIVITY}|"
+    rf"{_ACTIVITY}\s+(?:(?:was|has\s+been|is)\s+)?(?:detected|noticed|identified))\b",
+    re.IGNORECASE,
+)
+_ALERT_QUALIFIER = re.compile(
+    r"\b(?:no(?:\s+(?:evidence|signs?)\s+of)?|(?:if|whether)(?:\s+your)?)\s*$",
+    re.IGNORECASE,
+)
+_TIME_PRESSURE = re.compile(r"\b(?:no time to (?:lose|waste)|time is running out)\b", re.IGNORECASE)
+_IMMEDIATE_BEFORE = re.compile(r"\b(?:now|immediately)\s+$", re.IGNORECASE)
+_IMMEDIATE_AFTER = re.compile(r"\s+(?:now|immediately)\b", re.IGNORECASE)
 URGENCY_PATTERNS = [
     re.compile(
         r"\b(?:urgent(?:ly)?|immediately|right away|as soon as possible|action required|"
@@ -157,9 +171,23 @@ def _disclaimed_credential(text: str, end: int) -> bool:
     )
 
 
+def _nearby_account_alert(text: str, start: int, end: int) -> re.Match[str] | None:
+    # Only an affirmative account alert can cross a sentence boundary. A paragraph
+    # break, semicolon or intervening sentence keeps unrelated material separate.
+    for alert in _ACCOUNT_ALERT.finditer(text, max(0, start - 240), end + 240):
+        first, last = min(start, alert.start()), max(end, alert.end())
+        breaks = list(_CLAUSE_BREAK.finditer(text, first, last))
+        if len(breaks) > 1 or (breaks and breaks[0].lastgroup != "sentence"):
+            continue
+        prefix = text[max(0, alert.start() - 32) : alert.start()]
+        if not _negated(text, alert.start()) and not _ALERT_QUALIFIER.search(prefix):
+            return alert
+    return None
+
+
 def _account_context(text: str, request: re.Match[str]) -> re.Match[str] | None:
-    # A subject, another sentence or a distant part of the email cannot lend its
-    # deadline to a routine sign-in. Keep the qualifying words in the evidence.
+    # Credentials and deadlines stay local to the request. Return the corroborating
+    # words so the evidence explains why this particular request scored.
     start, end = request.span()
     if _CLAUSE_BREAK.search(text, start, end):
         return None
@@ -172,7 +200,12 @@ def _account_context(text: str, request: re.Match[str]) -> re.Match[str] | None:
     for cue in _ACCOUNT_CONTEXT.finditer(text, left, right):
         if not _disclaimed_credential(text, cue.end()):
             return cue
-    return None
+    immediate = _IMMEDIATE_BEFORE.search(text[left:start]) or _IMMEDIATE_AFTER.match(
+        text, end, right
+    )
+    if immediate and (pressure := _TIME_PRESSURE.search(text, left, right)):
+        return pressure
+    return _nearby_account_alert(text, start, end)
 
 
 def _find(

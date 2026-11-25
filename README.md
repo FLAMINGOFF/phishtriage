@@ -245,15 +245,15 @@ false-positive rate ≤ 5 %.
 | --- | --- | --- | --- | --- |
 | Synthetic samples (`tests/fixtures/emails/`) | 10 phishing, 5 legitimate | 100 % | 100 % | 0 % |
 | Original full-corpus baseline (default policy, offline) | 101 phishing, 2,750 legitimate | 6.25% | 2.97% | 1.64% |
-| After review, development split | 58 phishing, 1,395 legitimate | 56.25% | 15.52% | 0.50% |
-| After review, 2021 held-out split | 43 phishing, 1,355 legitimate | 33.33% | 6.98% | 0.44% |
-| After review, Nazario 2025 | 481 phishing only | N/A | 10.81% | N/A |
+| Account-alert follow-up, development split | 58 phishing, 1,395 legitimate | 56.25% | 15.52% | 0.50% |
+| Account-alert follow-up, 2021 held-out split | 43 phishing, 1,355 legitimate | 33.33% | 6.98% | 0.44% |
+| Account-alert follow-up, Nazario 2025 | 481 phishing only | N/A | 11.02% | N/A |
 
-The held-out figures are a second measurement after review changes. On the same 2021
-split, phishing detections fell from 7/43 to 3/43. False alarms stayed at 6/1,355.
-Recall was 6.98%, below the 90% target. The 2025 corpus contains only phishing.
-Estimating today’s false-positive rate requires recent legitimate mail. The synthetic
-fixtures check for regressions. [Evaluation report and aggregate data](docs/evaluation.md#second-measurement-after-pr-review--2026-11-25).
+These are the third measurements on the same held-out corpora. The 2021 split
+again yielded 3/43 phishing detections and 6/1,355 false alarms. On 2025 phishing
+mail, detections increased from 52/481 to 53/481. Recall remains below the 90%
+target, and evaluating today's false-positive rate requires recent legitimate mail.
+[Evaluation report and aggregate data](docs/evaluation.md#third-measurement-after-the-account-alert-follow-up--2026-11-25).
 
 ## Limitations and roadmap
 
