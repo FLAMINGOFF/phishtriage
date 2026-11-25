@@ -17,6 +17,19 @@
       "defects": [],
       "findings": [
         {
+          "analyzer": "content",
+          "description": "The message asks for sensitive information or pressures you to sign in or verify your account.",
+          "evidence": [
+            {
+              "field": "HTML body",
+              "match": "Sign in to keep",
+              "value": "ar student, Your mailbox is over quota. Sign in to keep receiving mail: hxxps://www[.]example[.]edu/account Exampl"
+            }
+          ],
+          "rule_id": "CONTENT_CREDENTIAL_REQUEST",
+          "score": 35
+        },
+        {
           "analyzer": "auth",
           "description": "DMARC failed in a trusted Authentication-Results header.",
           "evidence": [
@@ -31,12 +44,17 @@
         },
         {
           "analyzer": "urls",
-          "description": "The email itself contains a form or a password field.",
+          "description": "A form asks for sign-in details or sends information to a website outside the sender's organisation.",
           "evidence": [
             {
               "field": "HTML body",
-              "match": "form in the email body",
-              "value": "1 form(s), 1 password field(s)"
+              "match": "credential field",
+              "value": "1 credential input(s)"
+            },
+            {
+              "field": "HTML body",
+              "match": "form posts outside sender organisation",
+              "value": "hxxps://collect[.]evil[.]example/post"
             }
           ],
           "rule_id": "URL_CREDENTIAL_FORM",
@@ -44,7 +62,7 @@
         },
         {
           "analyzer": "urls",
-          "description": "A link shows one address but goes to another domain.",
+          "description": "A link shows one website address but leads to a different site.",
           "evidence": [
             {
               "field": "HTML link",
@@ -54,19 +72,6 @@
           ],
           "rule_id": "URL_TEXT_HREF_MISMATCH",
           "score": 20
-        },
-        {
-          "analyzer": "content",
-          "description": "The text asks for a password, verification code or similar.",
-          "evidence": [
-            {
-              "field": "HTML body",
-              "match": "Sign in to keep",
-              "value": "ar student, Your mailbox is over quota. Sign in to keep receiving mail: hxxps://www[.]example[.]edu"
-            }
-          ],
-          "rule_id": "CONTENT_CREDENTIAL_REQUEST",
-          "score": 15
         },
         {
           "analyzer": "auth",
@@ -179,7 +184,7 @@
         "helpdesk@evil.example"
       ],
       "return_path": "bounce@evil.example",
-      "score": 120,
+      "score": 140,
       "sent_at": "2026-11-24T08:12:40+00:00",
       "subject": "Mailbox quota exceeded",
       "verdict": "malicious"

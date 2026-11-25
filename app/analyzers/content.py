@@ -1,21 +1,21 @@
 """Content analyzer: what the text asks the reader to do (English and Chinese).
 
-Keyword rules are crude on purpose: they are cheap, explainable and only worth a few
-points each. The evidence shows the exact sentence fragment that matched.
+These bounded heuristics are explainable but incomplete. The evidence shows the
+normalised sentence fragment that matched, including statically read HTML attachments.
 """
 
 from __future__ import annotations
 
 import re
+import unicodedata
 
 from app.analyzers.base import AnalysisContext, Evidence, Hit, evidence, hit
+from app.analyzers.html_content import MAX_SCAN_CHARS, html_documents
 from app.parsing.defang import defang_text
-from app.parsing.html import analyze_html
 
-MAX_SCAN_CHARS = 200_000
 # Up to N characters within one sentence; single line breaks are fine (plain-text mail is
 # wrapped at ~72 columns), a blank line ends the search.
-_GAP = r"(?:(?!\n[ \t\r]{{0,10}}\n)[^.!?]){{0,{n}}}"
+_GAP = r"(?:(?!\n[ \t\r]{{0,10}}\n)[^.!?;。]){{0,{n}}}"
 _ASKED_FOR = (
     r"(?:password|passcode|passwd|pass code|pin(?: code)?|credentials|login details|"
     r"sign-in details|verification code|security code|one[- ]time (?:code|password|passcode)|"
@@ -32,8 +32,16 @@ CREDENTIAL_PATTERNS = [
         re.IGNORECASE,
     ),
     re.compile(
-        r"\b(?:verify|confirm|validate|re-?activate)\s+(?:your\s+)?"
-        r"(?:identity|account|mailbox|e-?mail account|login)\b",
+        r"(?:输入|提供|确认|验证|核实|更新|重置|填写|回复|保留)[^\n]{0,10}"
+        r"(?:密码|口令|验证码|动态码|校验码|账号信息|登录信息|银行卡)"
+    ),
+    re.compile(r"(?:验证|确认|核实)(?:您的|你的)?(?:身份|账户|账号|邮箱)"),
+]
+# Ordinary account requests need corroborating evidence before they score.
+_ACCOUNT_REQUESTS = [
+    re.compile(
+        r"\b(?:verify|confirm|validate|re-?activate|update)\s+(?:your\s+)?"
+        r"(?:(?:e-?mail\s+)?(?:address|account|mailbox)|identity|login|security settings)\b",
         re.IGNORECASE,
     ),
     re.compile(
@@ -41,12 +49,49 @@ CREDENTIAL_PATTERNS = [
         r"unlock|prevent|reactivate)\b",
         re.IGNORECASE,
     ),
+    # Account-access requests are often nominal/passive rather than "verify password".
     re.compile(
-        r"(?:输入|提供|确认|验证|核实|更新|重置|填写|回复|保留)[^\n]{0,10}"
-        r"(?:密码|口令|验证码|动态码|校验码|账号信息|登录信息|银行卡)"
+        r"\b(?:account|mailbox|e-?mail|identity)\s+(?:re[- ]?)?verification\s+"
+        r"(?:is\s+)?(?:required|needed)\b",
+        re.IGNORECASE,
     ),
-    re.compile(r"(?:验证|确认|核实)(?:您的|你的)?(?:身份|账户|账号|邮箱)"),
+    re.compile(
+        rf"\b(?:mail\s?box|account)\b{_GAP.format(n=25)}"
+        r"\b(?:needs? to be|must be)\s+(?:re[- ]?)?verified\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"\b(?:log|sign)[ -]?(?:in|on)\s+(?:to|with|using|your)\b{_GAP.format(n=45)}"
+        r"\b(?:password|mailbox|e-?mail|account|invoice|document)\b",
+        re.IGNORECASE,
+    ),
 ]
+_CLAUSE_BREAK = re.compile(r"(?P<sentence>[.!?。]+)|;|\n[ \t\r]*\n")
+_ACCOUNT_CONTEXT = re.compile(
+    rf"\b(?:{_ASKED_FOR}|within\s+(?:the\s+next\s+)?(?:\d{{1,3}}|one|an?)\s+"
+    r"(?:minutes?|hours?|hrs?|days?)|by\s+(?:midnight|noon|tonight|tomorrow)|"
+    r"(?:before|by)\s+the\s+end\s+of\s+(?:the\s+day|today)|"
+    r"(?:los(?:e|ing)|denied)\s+(?:your\s+)?access|"
+    r"(?:avoid|prevent)\s+(?:account\s+)?(?:suspension|deactivation|closure)|"
+    r"keep\s+(?:(?:your\s+)?(?:account|mailbox)\s+active|receiving\s+(?:your\s+)?(?:e-?)?mail))\b",
+    re.IGNORECASE,
+)
+_ACTIVITY = r"(?:unusual|suspicious)\s+(?:(?:sign[- ]in|login|account)\s+)?activity"
+_ACCOUNT_ALERT = re.compile(
+    r"\b(?:(?:account|mailbox|access)\s+(?:(?:will|may)\s+be|is|has\s+been)\s+"
+    r"(?:suspended|disabled|closed|deactivated|terminated|locked|deleted|blocked|restricted)|"
+    r"you\s+(?:are|have\s+been|will\s+be)\s+locked\s+out|"
+    rf"(?:detected|noticed|identified)\s+{_ACTIVITY}|"
+    rf"{_ACTIVITY}\s+(?:(?:was|has\s+been|is)\s+)?(?:detected|noticed|identified))\b",
+    re.IGNORECASE,
+)
+_ALERT_QUALIFIER = re.compile(
+    r"\b(?:no(?:\s+(?:evidence|signs?)\s+of)?|(?:if|whether)(?:\s+your)?)\s*$",
+    re.IGNORECASE,
+)
+_TIME_PRESSURE = re.compile(r"\b(?:no time to (?:lose|waste)|time is running out)\b", re.IGNORECASE)
+_IMMEDIATE_BEFORE = re.compile(r"\b(?:now|immediately)\s+$", re.IGNORECASE)
+_IMMEDIATE_AFTER = re.compile(r"\s+(?:now|immediately)\b", re.IGNORECASE)
 URGENCY_PATTERNS = [
     re.compile(
         r"\b(?:urgent(?:ly)?|immediately|right away|as soon as possible|action required|"
@@ -68,19 +113,39 @@ URGENCY_PATTERNS = [
 ]
 # "We will never ask for your password" is advice, not a request.
 _NEGATION = re.compile(
-    r"(?:\bnever|\bnot|n't|\bno one\b|绝不|不会|切勿|请勿|不要|永远不)[^.!?\n]{0,25}$",
+    r"(?:\bnever\b|\bnot\b|n't\b|\bno one\b|绝不|不会|切勿|请勿|不要|永远不)"
+    r"[^.!?:;。\n]{0,25}$",
     re.IGNORECASE,
 )
+_REASSURANCE = re.compile(
+    r"\bno\s+(?:action|(?:account\s+)?verification)\s+"
+    r"(?:is\s+)?(?:needed|required)\b(?:[ \t]+to[ \t]+)?",
+    re.IGNORECASE,
+)
+# Reassurance applies to this credential only, even if a later deadline is genuine.
+_CREDENTIAL_DISCLAIMER = re.compile(
+    rf"\b(?:no\s+{_ASKED_FOR}\s+(?:(?:is|are)\s+)?(?:required|needed)|"
+    rf"without\s+(?:an?\s+|your\s+)?{_ASKED_FOR}|"
+    rf"{_ASKED_FOR}\s+(?:is|are)\s+not\s+(?:required|needed))\b",
+    re.IGNORECASE,
+)
+
+
+def _normalize(text: str) -> str:
+    # Remove invisible format controls, not spaces/punctuation (sentence boundaries
+    # remain significant). Compatibility forms include full-width Latin characters.
+    return "".join(
+        ch for ch in unicodedata.normalize("NFKC", text) if unicodedata.category(ch) != "Cf"
+    )
 
 
 def _text(ctx: AnalysisContext) -> list[tuple[str, str]]:
     email = ctx.email
     fields = [("Subject", email.subject), ("Body", email.body_text[:MAX_SCAN_CHARS])]
-    if email.body_html:
-        html_text = analyze_html(email.body_html[:MAX_SCAN_CHARS]).text
-        if html_text.strip() and html_text.strip() not in email.body_text:
-            fields.append(("HTML body", html_text))
-    return fields
+    for name, document in html_documents(ctx):
+        if document.text.strip() and document.text.strip() not in email.body_text:
+            fields.append((name, document.text))
+    return [(name, _normalize(text)) for name, text in fields]
 
 
 def _snippet(text: str, start: int, end: int) -> str:
@@ -89,14 +154,78 @@ def _snippet(text: str, start: int, end: int) -> str:
     return " ".join(text[left:right].split())
 
 
-def _find(fields: list[tuple[str, str]], patterns: list[re.Pattern[str]]) -> list[Evidence]:
+def _negated(text: str, start: int) -> bool:
+    if _NEGATION.search(text[max(0, start - 40) : start]):
+        return True
+    # "No account verification is required" overlaps the request itself.
+    return any(
+        phrase.start() <= start <= phrase.end()
+        for phrase in _REASSURANCE.finditer(text, max(0, start - 64), min(len(text), start + 64))
+    )
+
+
+def _disclaimed_credential(text: str, end: int) -> bool:
+    return any(
+        phrase.start() < end <= phrase.end()
+        for phrase in _CREDENTIAL_DISCLAIMER.finditer(text, max(0, end - 50), end + 32)
+    )
+
+
+def _nearby_account_alert(text: str, start: int, end: int) -> re.Match[str] | None:
+    # Only an affirmative account alert can cross a sentence boundary. A paragraph
+    # break, semicolon or intervening sentence keeps unrelated material separate.
+    for alert in _ACCOUNT_ALERT.finditer(text, max(0, start - 240), end + 240):
+        first, last = min(start, alert.start()), max(end, alert.end())
+        breaks = list(_CLAUSE_BREAK.finditer(text, first, last))
+        if len(breaks) > 1 or (breaks and breaks[0].lastgroup != "sentence"):
+            continue
+        prefix = text[max(0, alert.start() - 32) : alert.start()]
+        if not _negated(text, alert.start()) and not _ALERT_QUALIFIER.search(prefix):
+            return alert
+    return None
+
+
+def _account_context(text: str, request: re.Match[str]) -> re.Match[str] | None:
+    # Credentials and deadlines stay local to the request. Return the corroborating
+    # words so the evidence explains why this particular request scored.
+    start, end = request.span()
+    if _CLAUSE_BREAK.search(text, start, end):
+        return None
+    left = max(0, start - 80)
+    for boundary in _CLAUSE_BREAK.finditer(text, left, start):
+        left = boundary.end()
+    right = min(len(text), end + 80)
+    if following_break := _CLAUSE_BREAK.search(text, end, right):
+        right = following_break.start()
+    for cue in _ACCOUNT_CONTEXT.finditer(text, left, right):
+        if not _disclaimed_credential(text, cue.end()):
+            return cue
+    immediate = _IMMEDIATE_BEFORE.search(text[left:start]) or _IMMEDIATE_AFTER.match(
+        text, end, right
+    )
+    if immediate and (pressure := _TIME_PRESSURE.search(text, left, right)):
+        return pressure
+    return _nearby_account_alert(text, start, end)
+
+
+def _find(
+    fields: list[tuple[str, str]], patterns: list[re.Pattern[str]], *, require_context: bool = False
+) -> list[Evidence]:
     items = []
     for name, text in fields:
         for pattern in patterns:
             for match in pattern.finditer(text):
-                if _NEGATION.search(text[max(0, match.start() - 30) : match.start()]):
+                start, end = match.span()
+                if _negated(text, start):
                     continue
-                snippet = defang_text(_snippet(text, match.start(), match.end()))
+                if require_context:
+                    context = _account_context(text, match)
+                    if context is None:
+                        continue
+                    start, end = min(start, context.start()), max(end, context.end())
+                elif _disclaimed_credential(text, end):
+                    continue
+                snippet = defang_text(_snippet(text, start, end))
                 items.append(evidence(name, snippet, " ".join(match.group(0).split())))
     return items
 
@@ -104,7 +233,9 @@ def _find(fields: list[tuple[str, str]], patterns: list[re.Pattern[str]]) -> lis
 def analyze(ctx: AnalysisContext) -> list[Hit]:
     fields = _text(ctx)
     hits: list[Hit] = []
-    if credentials := _find(fields, CREDENTIAL_PATTERNS):
+    credentials = _find(fields, CREDENTIAL_PATTERNS)
+    credentials.extend(_find(fields, _ACCOUNT_REQUESTS, require_context=True))
+    if credentials:
         hits.append(hit("CONTENT_CREDENTIAL_REQUEST", credentials))
     if urgency := _find(fields, URGENCY_PATTERNS):
         hits.append(hit("CONTENT_URGENCY", urgency))  # counted once, however many phrases

@@ -17,6 +17,19 @@
       "defects": [],
       "findings": [
         {
+          "analyzer": "content",
+          "description": "The message asks for sensitive information or pressures you to sign in or verify your account.",
+          "evidence": [
+            {
+              "field": "Body",
+              "match": "confirm your bank details",
+              "value": "Hello, Payroll needs you to confirm your bank details before Friday or your salary payment w"
+            }
+          ],
+          "rule_id": "CONTENT_CREDENTIAL_REQUEST",
+          "score": 35
+        },
+        {
           "analyzer": "sender",
           "description": "The display name claims to be us, but the address is external.",
           "evidence": [
@@ -33,19 +46,6 @@
           ],
           "rule_id": "SENDER_DISPLAY_NAME_SPOOF",
           "score": 20
-        },
-        {
-          "analyzer": "content",
-          "description": "The text asks for a password, verification code or similar.",
-          "evidence": [
-            {
-              "field": "Body",
-              "match": "confirm your bank details",
-              "value": "Hello, Payroll needs you to confirm your bank details before Friday or your salary payment w"
-            }
-          ],
-          "rule_id": "CONTENT_CREDENTIAL_REQUEST",
-          "score": 15
         },
         {
           "analyzer": "sender",
@@ -106,7 +106,7 @@
         },
         {
           "analyzer": "content",
-          "description": "Urgent or threatening language (counted once).",
+          "description": "The message uses urgent or threatening language.",
           "evidence": [
             {
               "field": "Body",
@@ -207,7 +207,7 @@
         "payroll-desk@reply.test"
       ],
       "return_path": null,
-      "score": 95,
+      "score": 115,
       "sent_at": "2026-11-24T02:59:58+00:00",
       "subject": "Salary payment on hold",
       "verdict": "malicious"

@@ -2,7 +2,8 @@
 
 ## Current milestone
 M0–M6 implementation complete (v1.0.0). Releases and public-corpus baseline are published.
-Detection-quality target remains unmet: public-corpus recall is 2.97% (see Open issues).
+The account-alert follow-up caught 3/43 phishing messages (6.98%) on a third measurement
+of the same 2021 held-out set. The 90% recall target remains unmet.
 
 ## Done
 - M0 – Skeleton: uv project, ruff/mypy/pytest/pre-commit, settings loader (.env +
@@ -76,16 +77,85 @@ Detection-quality target remains unmet: public-corpus recall is 2.97% (see Open 
   The 21 evaluation/verdict tests passed; no rejected messages or analysis errors.
   Results, limitations and reproducible workflow are in `docs/evaluation.md`.
 
+## Detection tuning, first measurement — 2026-11-25
+- Frozen detector: `9db8cf8330baa499ce6b6040afc813decf348a3e`, before held-out evaluation.
+- Default-policy held-out recall increased from 4.65% to 16.28%; FPR decreased from
+  1.70% to 0.44%. Extra Nazario 2025 recall increased from 1.66% to 15.18%.
+- Preserve the original full-corpus JSON. Add a separate aggregate result file with
+  baseline/tuned split metrics, corpus hashes and an authentication sensitivity row.
+- Public-corpus Actions run `45526114397` reproduced every tuned split/authentication
+  aggregate exactly. Results and remote metadata are committed; review is in PR #12.
+- Local validation and final-head CI links are recorded in docs/evaluation.md.
+
+## PR #12 review — 2026-11-25
+- Froze the reviewed detector at `6054b917ee98e659e00b01c8d800786f6d67b635` and ran
+  the dev phase first. It caught 9/58 with 7/1,395 false positives, compared with
+  18/58 and 7/1,395 before review.
+- Ran the final phase once after review on the same held-out data. Recall moved
+  from 7/43 to 3/43 (6.98%), and false positives stayed at 6/1,355 (0.44%).
+  Recall on the reused 2025 sample moved from 73/481 to 52/481 (10.81%).
+  The four review examples are separate regression tests. The 2003 legitimate mail
+  gives limited evidence about false positives on similar notifications today.
+  [Review run](https://github.com/FLAMINGOFF/phishtriage/actions/runs/45528438262)
+  and [aggregate results](docs/public-corpus-2026-11-25-review.json).
+
+## Account-alert follow-up — 2026-11-25
+- All four reported lures now trigger the credential rule. The four routine notices
+  in the prior review still pass their negative tests.
+- The third measurement reproduced the prior 2021 held-out counts (3/43 phishing
+  detected, 6/1,355 false alarms). The 2025 positive-only corpus went from 52 to
+  53 detections out of 481. [Aggregate results](docs/public-corpus-2026-11-25-account-context.json).
+
 ## Open issues
-- Detection quality needs substantial improvement: at threshold 40, both policies
-  detect 3/101 phishing messages (2.97% recall), below the 90% target. Default-policy
-  precision is 6.25%, false-positive rate 1.64%. Do not treat passing synthetic tests
-  or a successful workflow as real-world detection validation.
-- Review broad HTML form/link-mismatch heuristics and missing phishing signals, then
-  evaluate changes on separate development and held-out, contemporary corpora with
-  organisation-specific policy and separately measured threat intelligence.
+- Recall remains far below 90%: 40/43 held-out 2021 messages and 428/481 later messages
+  are missed. Many have no scoring evidence; single credential/link cues also fall
+  below 40. Do not treat synthetic regression tests as real-world accuracy.
+- Need contemporary legitimate mail, campaign-aware separation, independent labels,
+  broader language/attachment coverage and organisation-specific policy. Plain file
+  sharing, callback scams and obfuscated lures remain weakly covered; no unsafe link
+  fetching or attachment execution was added to compensate.
+- Unknown third-party POST/tracking services and legitimate login requests can still
+  trigger false positives. Authentication FPR needs modern ham through a trusted MX.
 
 ## Decision log
+- Follow-up to PR #12: let a stated account lockout, suspension or detected unusual
+  activity support a generic English request from the same or an immediately adjacent
+  sentence, within 240 characters in the same field and paragraph. Reserve the wider
+  window for account alerts. “Now” or “immediately” alone provides no evidence, but
+  it can reinforce an explicit time-pressure statement in the request clause. Keep
+  the 35-point weight, verdict thresholds and the prior routine-mail regressions.
+- PR #12 review: keep the 35-point credential weight, but require credentials, an
+  access threat or a deadline in the same clause as a generic English account or
+  sign-in request. A routine subscription, statement, address change or two-factor
+  setup can otherwise combine with a 5-point signal to reach the suspicious threshold.
+- PR #12 review: recognise targeted reassurances such as “no action is needed” and
+  “no account verification is required”, plus advice such as “no one should ask”.
+  A bare “no” cannot cancel a later request: “No fees apply: verify your account
+  within 24 hours or lose access” must still raise the credential finding.
+- Detection tuning: split raw message SHA-256 first nibble < 8 into development;
+  reserve the other half and all Nazario 2025 messages before inspecting errors.
+  No corpus identifiers, recipient identities, dates or mailing-list markers score.
+- Detection tuning: URL_CREDENTIAL_FORM requires an enabled credential input or an
+  explicit HTTP(S) POST outside the sender organisation, including direct HTML
+  attachments. GET/search forms and same-organisation newsletter forms do not score.
+  Cross-domain POST without a known sender is not attributed to an organisation.
+- Detection tuning: URL_TEXT_HREF_MISMATCH exempts explicit org_domains aliases only
+  when sender, displayed domain and target all belong to that organisation. Protected
+  brands and arbitrary redirect providers do not prove shared ownership.
+- Detection tuning: CONTENT_CREDENTIAL_REQUEST includes passive account verification,
+  login-to-document requests and bounded static HTML attachment text. NFKC and removal
+  of invisible format controls recover split keywords; negation remains significant.
+  Scripts/resources are never executed or fetched. Attachment scan limits are 20
+  direct HTML files, 1 MB total bytes and 200,000 decoded characters per document.
+- Detection tuning: CONTENT_URGENCY uses the same bounded, normalised body and direct
+  HTML attachment text, retains its 5-point weight and counts once per message.
+- Detection tuning: compare credential/urgency weights 30/5, 35/5 and 35/10 on dev
+  only. Choose 35/5; 35/10 adds no benefit. Reject informational sign-in activity as
+  a credential request during regression review: final dev is 18/58 TP, 7/1,395 FP.
+  Replace the invalid PNG unit-test stub with a complete image for libmagic portability;
+  update score/evidence snapshots, leaving parsed fields and verdicts unchanged. Keep the original
+  23 rule IDs, verdict thresholds and synthetic analyst labels. Historical data and
+  near-duplicate campaigns limit generalisation; authentication is a separate experiment.
 - RQ instead of Celery: simpler, enough for a single node (fixed by the plan).
 - Secrets only from environment; `settings.yaml` feeds only the `policy` field and rejects
   unknown keys, so a key pasted into YAML is a startup error.

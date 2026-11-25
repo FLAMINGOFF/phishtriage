@@ -84,6 +84,8 @@ class HtmlInfo(BaseModel):
     links: list[HtmlLink] = Field(default_factory=list)
     form_count: int = 0
     password_inputs: int = 0
+    credential_inputs: int = 0
+    post_actions: list[str] = Field(default_factory=list)
     meta_refresh: list[str] = Field(default_factory=list)
 
 
@@ -94,6 +96,8 @@ class _Extractor(HTMLParser):
         self.links: list[HtmlLink] = []
         self.forms = 0
         self.passwords = 0
+        self.credentials = 0
+        self.post_actions: list[str] = []
         self.meta_refresh: list[str] = []
         self._skip_depth = 0
         self._anchor: HtmlLink | None = None
@@ -107,8 +111,27 @@ class _Extractor(HTMLParser):
             self.chunks.append("\n")
         if tag == "form":
             self.forms += 1
-        if tag == "input" and values.get("type", "").strip().lower() == "password":
-            self.passwords += 1
+            action = values.get("action", "").strip()
+            if (
+                values.get("method", "").strip().lower() == "post"
+                and action
+                and len(self.post_actions) < MAX_LINKS
+            ):
+                self.post_actions.append(action)
+        if tag == "input" and "disabled" not in values:
+            input_type = values.get("type", "text").strip().lower()
+            if input_type == "password":
+                self.passwords += 1
+            names = {values.get(key, "").strip().lower() for key in ("name", "id")}
+            autocomplete = set(values.get("autocomplete", "").lower().split())
+            if input_type == "password" or (
+                input_type in {"text", "number", "tel", ""}
+                and (
+                    names & {"password", "passwd", "passcode", "otp", "pin"}
+                    or autocomplete & {"current-password", "new-password", "one-time-code"}
+                )
+            ):
+                self.credentials += 1
         if tag == "meta" and values.get("http-equiv", "").lower() == "refresh":
             content = values.get("content", "")
             _, _, target = content.partition("=")
@@ -159,6 +182,8 @@ def analyze_html(html: str) -> HtmlInfo:
         links=parser.links,
         form_count=parser.forms,
         password_inputs=parser.passwords,
+        credential_inputs=parser.credentials,
+        post_actions=parser.post_actions,
         meta_refresh=parser.meta_refresh,
     )
 

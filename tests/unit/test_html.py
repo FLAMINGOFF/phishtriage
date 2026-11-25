@@ -34,6 +34,14 @@ def test_analyze_html_is_bounded_and_tolerant() -> None:
     assert analyze_html("").text == ""
 
 
+def test_post_actions_are_explicit_and_bounded() -> None:
+    html = '<form method="POST" action="https://evil.example/post"></form>'
+    info = analyze_html(html * (MAX_LINKS + 1))
+    assert len(info.post_actions) == MAX_LINKS
+    assert analyze_html('<form action="/get"><input type="email"></form>').credential_inputs == 0
+    assert analyze_html('<form action="/get"></form>').post_actions == []
+
+
 def test_sanitize_drops_everything_active() -> None:
     dirty = (
         '<p onclick="x()" style="color:red" title="t">Hi <a href="https://evil.example">here</a>'

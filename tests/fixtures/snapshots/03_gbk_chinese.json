@@ -18,16 +18,16 @@
       "findings": [
         {
           "analyzer": "content",
-          "description": "The text asks for a password, verification code or similar.",
+          "description": "The message asks for sensitive information or pressures you to sign in or verify your account.",
           "evidence": [
             {
               "field": "Body",
               "match": "验证密码",
-              "value": "尊敬的用户： 您的邮箱账户将被停用。请在24小时内点击下面的链接验证密码，否则账户将被冻结。 hxxp://203[.]0[.]113[.]50/verify"
+              "value": "尊敬的用户: 您的邮箱账户将被停用。请在24小时内点击下面的链接验证密码,否则账户将被冻结。 hxxp://203[.]0[.]113[.]50/verify"
             }
           ],
           "rule_id": "CONTENT_CREDENTIAL_REQUEST",
-          "score": 15
+          "score": 35
         },
         {
           "analyzer": "urls",
@@ -57,32 +57,32 @@
         },
         {
           "analyzer": "content",
-          "description": "Urgent or threatening language (counted once).",
+          "description": "The message uses urgent or threatening language.",
           "evidence": [
             {
               "field": "Subject",
               "match": "紧急",
-              "value": "紧急：您的邮箱即将停用"
+              "value": "紧急:您的邮箱即将停用"
             },
             {
               "field": "Subject",
               "match": "即将停用",
-              "value": "紧急：您的邮箱即将停用"
+              "value": "紧急:您的邮箱即将停用"
             },
             {
               "field": "Body",
               "match": "将被停用",
-              "value": "尊敬的用户： 您的邮箱账户将被停用。请在24小时内点击下面的链接验证密码，否则账户将被冻结。 http://"
+              "value": "尊敬的用户: 您的邮箱账户将被停用。请在24小时内点击下面的链接验证密码,否则账户将被冻结。 http://"
             },
             {
               "field": "Body",
               "match": "24小时内",
-              "value": "尊敬的用户： 您的邮箱账户将被停用。请在24小时内点击下面的链接验证密码，否则账户将被冻结。 hxxp://203[.]0[.]11"
+              "value": "尊敬的用户: 您的邮箱账户将被停用。请在24小时内点击下面的链接验证密码,否则账户将被冻结。 hxxp://203[.]0[.]11"
             },
             {
               "field": "Body",
               "match": "将被冻结",
-              "value": "户： 您的邮箱账户将被停用。请在24小时内点击下面的链接验证密码，否则账户将被冻结。 hxxp://203[.]0[.]113[.]50/verify/镕 邮件系"
+              "value": "户: 您的邮箱账户将被停用。请在24小时内点击下面的链接验证密码,否则账户将被冻结。 hxxp://203[.]0[.]113[.]50/verify/镕 邮件系"
             }
           ],
           "rule_id": "CONTENT_URGENCY",
@@ -128,7 +128,7 @@
       ],
       "reply_to": [],
       "return_path": null,
-      "score": 40,
+      "score": 60,
       "sent_at": "2026-11-23T23:01:05+08:00",
       "subject": "紧急：您的邮箱即将停用",
       "verdict": "suspicious"

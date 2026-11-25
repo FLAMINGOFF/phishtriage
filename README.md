@@ -244,17 +244,16 @@ false-positive rate ≤ 5 %.
 | Data | Emails | Precision | Recall | False-positive rate |
 | --- | --- | --- | --- | --- |
 | Synthetic samples (`tests/fixtures/emails/`) | 10 phishing, 5 legitimate | 100 % | 100 % | 0 % |
-| Nazario 2021 + SpamAssassin ham (default policy, offline) | 101 phishing, 2,750 legitimate | 6.25% | 2.97% | 1.64% |
-| Same public corpora (fixed brand policy, offline) | 101 phishing, 2,750 legitimate | 6.00% | 2.97% | 1.71% |
+| Original full-corpus baseline (default policy, offline) | 101 phishing, 2,750 legitimate | 6.25% | 2.97% | 1.64% |
+| Account-alert follow-up, development split | 58 phishing, 1,395 legitimate | 56.25% | 15.52% | 0.50% |
+| Account-alert follow-up, 2021 held-out split | 43 phishing, 1,355 legitimate | 33.33% | 6.98% | 0.44% |
+| Account-alert follow-up, Nazario 2025 | 481 phishing only | N/A | 11.02% | N/A |
 
-The synthetic samples were written with the rules, so their 100 % is a regression test,
-not an estimate of real-world accuracy. The method, the commands for the public corpora
-and measured results are in [docs/evaluation.md](docs/evaluation.md).
-
-**The public-corpus recall target was not met:** both policies detected only 3 of 101
-phishing messages. This historical offline baseline does not establish production
-accuracy. The report records data hashes, confusion matrices, false-alarm/miss
-patterns and the [reproducible Actions run](https://github.com/FLAMINGOFF/phishtriage/actions/runs/45516152754).
+These are the third measurements on the same held-out corpora. The 2021 split
+again yielded 3/43 phishing detections and 6/1,355 false alarms. On 2025 phishing
+mail, detections increased from 52/481 to 53/481. Recall remains below the 90%
+target, and evaluating today's false-positive rate requires recent legitimate mail.
+[Evaluation report and aggregate data](docs/evaluation.md#third-measurement-after-the-account-alert-follow-up--2026-11-25).
 
 ## Limitations and roadmap
 

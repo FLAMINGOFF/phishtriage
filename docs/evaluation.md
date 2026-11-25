@@ -227,13 +227,249 @@ checksum, brand-policy and analysis-error checks. The existing rule and policy h
 are in the aggregate JSON. No weights were tuned during this evaluation; future
 improvements need a separate held-out corpus before making accuracy claims.
 
+## Third measurement after the account-alert follow-up — 2026-11-25
+
+The four reported lures now trigger the credential-request rule in regression tests.
+The four routine subscription, billing, address-change and security notices from the
+prior review still pass their negative tests. We used the development split and
+these regression cases to check the change. The detector was frozen at
+`7d02e51abfea7c5e8e9a98691a16fc1d264fce04` before the single final run.
+
+**This is the third measurement on the same held-out data.** The first two results
+were already known. The final run reproduced the local development result and used
+the same corpus checksums, split, scoring weights and thresholds as the second run.
+
+| Dataset | Second → third detections | Second → third false alarms | Third recall | Third FPR |
+| --- | ---: | ---: | ---: | ---: |
+| Development (58 phishing, 1,395 ham) | 9 → 9 | 7 → 7 | 15.52% | 0.50% |
+| 2021 held-out (43 phishing, 1,355 ham) | 3 → 3 | 6 → 6 | 6.98% | 0.44% |
+| 2025 (481 phishing only) | 52 → 53 | N/A | 11.02% | N/A |
+| 2021 held-out with the selected mail server trusted | 3 → 3 | 6 → 6 | 6.98% | 0.44% |
+
+On 2021 held-out mail, all recorded aggregates matched the second measurement.
+The detector missed 40 of 43 phishing messages. On 2025 mail, the credential rule
+matched 83 messages, up from 82, and 53 of 481 reached a positive verdict, up from
+52. That collection contains only phishing. The 0.44% false-positive rate comes
+from legitimate mail collected in 2003, including in the authentication sensitivity
+row. Estimating current performance requires independently held-out recent mail.
+
+No parser rejections or analyzer errors occurred. Locally, 669 tests passed with
+96.90% coverage, three were skipped and three live tests were deselected. Ruff,
+mypy and the synthetic verdict check passed. [Third measurement](https://github.com/FLAMINGOFF/phishtriage/actions/runs/45529879963) ·
+[Aggregate JSON](public-corpus-2026-11-25-account-context.json) · [Second measurement](public-corpus-2026-11-25-review.json).
+
+## Second measurement after PR review — 2026-11-25
+
+Review supplied four legitimate messages about subscription activation, monthly
+statements, moving address and enabling two-factor authentication. Regression tests
+check that these examples do not trigger the 35-point credential-request rule and
+that “No fees apply” still allows a later request with a deadline to trigger it.
+Generic account and login requests now require credential, threat or deadline context.
+
+**The held-out figures below are a second measurement after review changes.** The
+first results were already known. We ran the development phase first, then the final
+phase once at `6054b917ee98e659e00b01c8d800786f6d67b635`. The final run reproduced
+the development counts. Both measurements used the same split and the same 2025 mail. [GitHub Actions run](https://github.com/FLAMINGOFF/phishtriage/actions/runs/45528438262) · [Aggregate JSON](public-corpus-2026-11-25-review.json)
+
+| Dataset | Phishing detected, first → second | False alarms, first → second | Second precision | Second recall | Second historical FPR |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Development (58 phishing, 1,395 ham) | 18 → 9 | 7 → 7 | 56.25% | 15.52% | 0.50% |
+| 2021 held-out (43 phishing, 1,355 ham) | 7 → 3 | 6 → 6 | 33.33% | 6.98% | 0.44% |
+| 2025 phishing (481 phishing only) | 73 → 52 | N/A | N/A | 10.81% | N/A |
+| 2021 held-out with the receiving mail server trusted | 7 → 3 | 6 → 6 | 33.33% | 6.98% | 0.44% |
+
+At the 40-point threshold, the revised detector caught four fewer phishing messages
+on the 2021 held-out split and 21 fewer on the 2025 corpus. Of the missed phishing
+messages, 25/40 from 2021 and 200/429 from 2025 scored zero. Four of the six held-out
+false alarms still triggered the credential-request rule. Multiple rules can fire
+on one message, so these groups overlap. The parser accepted every message and all
+analyzers completed without error.
+
+The historical false-alarm counts stayed the same. The 2003 legitimate mail lacks
+comparable authentication headers, including for the experiment that trusted the
+receiving mail server. Measuring false alarms on real subscription, account and
+security notifications requires recent labelled legitimate mail. The phishing-only
+2025 corpus supports a recall estimate only.
+
+Ruff lint and formatting, mypy and the synthetic fixture evaluation passed locally.
+The test suite passed 648 tests with 96.88% coverage. Three tests were skipped
+and three live tests were deselected.
+
+## Detection tuning — 2026-11-25
+
+### First measurement before PR review
+
+The first tuned detector found 7/43 held-out phishing messages from 2021 and 73/481
+from 2025. The baseline found 2/43 and 8/481 respectively. The first tuned detector
+flagged 0.44% of the held-out legitimate mail from 2003.
+Baseline rows were measured locally. All tuned split and authentication aggregates were
+reproduced exactly by the successful [GitHub Actions run](https://github.com/FLAMINGOFF/phishtriage/actions/runs/45526114397)
+at `9ddb82a996da2bfe540966db6559f9bf5455f47d` (Ubuntu 24.04, Python 3.12.16).
+The aggregate JSON records the remote metadata and canonical result hash.
+
+[First-measurement aggregate JSON](public-corpus-2026-11-25-detection-tuning.json) preserves baseline
+and tuned split results separately. The original `public-corpus-2026-11-25.json` is
+unchanged. Baseline application: `8ad97e0ccf0f43230c2cd73529a0867b556c827b`.
+The tables and error counts below describe the detector frozen at
+`9db8cf8330baa499ce6b6040afc813decf348a3e` (application changes in
+`7844f381da29c7727ba67e4278711ebdc2cfac87`). The review changes followed this measurement.
+Local runtime: Python 3.12.15, macOS arm64, libmagic 5.48, locked dependencies.
+The original published baseline used Ubuntu/libmagic 5.45; the before/after rows below
+use the same local runtime, and their full baseline counts reproduce the published result.
+
+### Split and provenance
+
+Before inspecting misses or tuning, assign each raw message by its SHA-256 first
+hexadecimal digit: `0`–`7` is dev, `8`–`f` is held out. For mbox use
+`mailbox.mbox.get_bytes()` (exclude the Unix From envelope); for ham use exact archive
+member bytes. Identical raw messages cannot cross the split. The original three
+checksum-pinned corpora above produce **58 phishing + 1,395 ham dev** and
+**43 phishing + 1,355 ham held out**. There are 101/2,750 unique raw messages and no
+cross-class duplicates. The canonical split manifest is the sorted list of
+`(sha256, label, split)`, encoded with `json.dumps(..., separators=(",", ":"))`;
+its SHA-256 is `1ec75c4d10ebb37b2a68a46fd5a71a759a011c192baa9c523d727bee1a039ff7`.
+Only that manifest hash is published, not individual message identifiers.
+
+Additional held-out source: [Jose Nazario phishing-2025](https://monkey.org/~jose/phishing/phishing-2025),
+**481 phishing messages**, SHA-256
+`f1fa7e0fe35c9a16f36d9aa20ade7e1d3908d1d0c1d917b8c53c8aa799ec1c8f`.
+It was downloaded/pinned before tuning; its content and errors were not inspected until
+after the detector freeze. All 481 raw messages are unique with zero exact overlaps
+with 2021. Attribution: Jose Nazario, [CC BY 4.0 and corpus notes](https://monkey.org/~jose/phishing/README.txt).
+No near-duplicate or campaign deduplication was performed. Correlated campaigns can
+inflate confidence, including across the 2021 random split. The later positive-only
+corpus cannot estimate precision, FPR or F1; JSON records these as null, not zero.
+No labels were changed and no real messages, addresses or attachment contents are committed.
+
+### Changes selected using dev only
+
+- A form now needs an enabled credential field or an explicit HTTP(S) POST action
+  outside the sender organisation. Plain subscription/GET forms no longer count.
+- Displayed/target domains from an explicitly configured `org_domains` alias set do not
+  mismatch when the sender belongs to that same set. Protected brand lists and unknown
+  third-party redirect services do not prove ownership; no corpus-specific whitelist was added.
+- Read direct HTML attachments statically for credential forms and text, within strict
+  byte/file/character limits. Add passive account-verification and login-to-document
+  request patterns; remove invisible format controls and normalise compatibility text.
+  Informational sign-in activity alone is not a credential request.
+- Credential requests score 35 instead of 15; all other weights and thresholds remain
+  unchanged. Keep all 23 IDs and the synthetic analyst labels. Update only expected
+  scores/evidence in snapshots. A complete tiny PNG replaces an invalid unit-test stub
+  to avoid libmagic-version-dependent tests; attachment detection was not weakened.
+
+Before weights, the first semantic candidate detected 8/58 with 6/1,395 false alarms.
+Dev-only credential/urgency weight trials 30/5, 35/5 and 35/10 detected 16, 19 and 19
+with seven false alarms each. We selected 35/5 because increasing urgency added no
+benefit. Regression review then removed an overly broad informational sign-in match,
+leaving the frozen dev result at **18 TP / 7 FP**. The holdout was not used for that
+correction. See the explicit rule decisions in [PROGRESS.md](../PROGRESS.md#decision-log)
+and semantic limits in [scoring.md](scoring.md).
+
+### Baseline and first tuned measurement at threshold 40
+
+| Data | Version | TP | FN | FP | TN | Precision | Recall | Historical ham FPR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Dev (58 / 1,395) | Baseline | 1 | 57 | 22 | 1,373 | 4.35% | 1.72% | 1.58% |
+| Dev (58 / 1,395) | Tuned | 18 | 40 | 7 | 1,388 | 72.00% | 31.03% | 0.50% |
+| Held out (43 / 1,355) | Baseline | 2 | 41 | 23 | 1,332 | 8.00% | 4.65% | 1.70% |
+| Held out (43 / 1,355) | Tuned | 7 | 36 | 6 | 1,349 | 53.85% | 16.28% | 0.44% |
+| Extra 2025 (481 / 0) | Baseline | 8 | 473 | N/A | N/A | N/A | 1.66% | N/A |
+| Extra 2025 (481 / 0) | Tuned | 73 | 408 | N/A | N/A | N/A | 15.18% | N/A |
+| Deployment-like auth, held out | Baseline | 2 | 41 | 23 | 1,332 | 8.00%* | 4.65% | 1.70%* |
+| Deployment-like auth, held out | Tuned | 7 | 36 | 6 | 1,349 | 53.85%* | 16.28% | 0.44%* |
+
+Full 2021 + ham quality-gate run after freezing: **25 TP, 76 FN, 13 FP, 2,737 TN**,
+recall 24.75%, precision 65.79%, FPR 0.47%. This combines dev and held out and is not
+an independent test result. Every corpus run had zero parser rejections and zero
+analyzer errors; incomplete analyses fail the public harness instead of silently
+improving the denominator. Synthetic verdicts remain 15/15 correct (10 positive, five negative).
+
+### Authentication sensitivity, separate from the headline
+
+Count authserv-ids once per Nazario 2021 message; publish only counts in the JSON.
+The most frequent exact ID is `imf11.b.hostedemail.com` (six messages), chosen by
+frequency, not outcome. The separate deployment-like row additionally trusts only this
+ID, equivalent to `--trust-authserv imf11.b.hostedemail.com`. It appears in three
+held-out messages and adds no scoring authentication failures, so detection is unchanged.
+Other observed receiving hosts are distributed over many IDs; this single-host test
+has low coverage and does not show that authentication is unhelpful.
+
+The copied headers are not independently verified. Trust is restricted to this
+experiment and is not written into application policy. **The 2003 ham has no comparable
+Authentication-Results: starred precision/FPR describe the historical mix only and do
+not validate authentication-related deployment false positives.** Real deployment
+requires a controlled receiving MX and representative modern ham.
+
+### Remaining errors and limits in the first measurement
+
+Counts below are overlapping rule-presence groups, not independently verified attack
+labels. No attempt was made to relabel the public corpora to improve scores.
+
+- **Dev:** 40 misses, including 19 with zero score; 11 misses contain a credential
+  request and six a link-text mismatch but remain below 40. Seven false alarms include
+  five cross-domain POST forms, four link mismatches, three Reply-To mismatches, one
+  credential request and one executable attachment. The forms include third-party
+  newsletter services; accepting all such hosts would also hide attacker destinations.
+- **Held out:** 36 misses, including 21 with zero score; five match a credential request,
+  five a link mismatch, two a credential form and one an HTML attachment. Six false
+  alarms include four credential requests, three forms and three Reply-To mismatches.
+  Legitimate account/login requests still resemble phishing and need additional context.
+- **Extra 2025:** 408 misses, including 189 with zero score. Among misses, urgency occurs
+  127 times, credential requests 50, link mismatches 28 and HTML attachments nine.
+  Generic urgency alone remains deliberately weak; a single credential request at 35
+  also stays below the suspicious threshold.
+- Dev review showed ordinary-looking shared-file/voicemail links, callback scams,
+  non-English or visually obfuscated text, and lures inside attachments. The changes
+  address only a subset. No image OCR, script execution, nested-archive expansion or
+  remote landing-page retrieval was added. Default example policy does not know real
+  organisations' brand aliases. Modern ham, campaign-aware sampling and independently
+  checked labels are needed before any production claim. The 43-message held-out
+  positive set is small, and its performance is materially below dev.
+
+### Reproduce the split evaluation
+
+The workflow retains checksum pinning, count assertions, network-blocking audit hooks
+and aggregate-only output. It reads ham bytes from verified archives, avoiding stale
+extractions. Local error listings stay under ignored `data/private/`.
+
+```bash
+uv sync --locked
+# Download the four URLs/checksums in .github/workflows/public-corpus.yml first.
+# While tuning: this phase does not load the later corpus or analyse held-out mail.
+uv run python scripts/public_corpus.py --phase dev --json data/private/dev.json
+# Only after freezing detector code and weights:
+uv run python scripts/public_corpus.py --phase final \
+  --json data/private/final.json --markdown data/private/final.md
+uv run python scripts/evaluate.py --fixtures
+uv run python scripts/evaluate.py \
+  --phish data/private/nazario-phishing-2021.mbox \
+  --ham data/private/easy_ham data/private/hard_ham \
+  --show-errors 50 --markdown --json data/private/metrics.json
+# Remote aggregate-only evaluation on the review branch:
+gh workflow run public-corpus.yml --ref detection-tuning -f phase=final
+```
+
+For the before rows, run this same harness using the `app/` and `scripts/evaluate.py`
+from `8ad97e0`: create a detached worktree at that commit, copy only
+`scripts/public_corpus.py` into its `scripts/`, and invoke it with the current environment's
+Python plus `--data-dir /absolute/path/to/data/private --phase final`. The lockfile and
+example policy hashes match. The JSON records both code references and rules hashes.
+
+For the first measurement, locked sync, Ruff lint/format, mypy and both evaluation
+commands passed. The test suite passed **628 tests** with 96.89% coverage. Three environment-dependent tests were
+skipped (two Compose integration tests and one PostgreSQL-only test); three live tests
+were deselected as designed. The branch is published as [PR #12](https://github.com/FLAMINGOFF/phishtriage/pull/12);
+its Checks tab tracks the final commit's CI, including Compose and PostgreSQL.
+The public-corpus Actions run above passed with exactly matching aggregate results.
+No main push or merge is authorised for this work. Frank reviews the PR.
+
 ## Tuning
 
-The rule weights in `app/scoring/rules.yaml` are the plan's starting values. They were
-not tuned on the synthetic samples, because fitting weights to fifteen hand-written
-emails would only fit those emails. Tuning follows the public-corpus run:
+The current weights were selected using the dev split above, not the synthetic labels.
+Further tuning needs fresh held-out data: the reported held-out sets are now observed.
+Keep development diagnostics separate from final evaluation:
 
-1. Run with `--show-errors 50` and read the misses and false alarms.
+1. Fix the split first. Run `--show-errors 50` on dev only and read its errors.
 2. Fix rules that fire on the wrong thing first (a bug, not a weight).
 3. Then adjust weights or thresholds in a copy, compare with `--rules copy.yaml`, and
    keep a change only if recall rises without the false-positive rate passing 5 %.

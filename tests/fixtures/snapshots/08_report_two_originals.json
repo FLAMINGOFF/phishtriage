@@ -66,6 +66,19 @@
       "defects": [],
       "findings": [
         {
+          "analyzer": "content",
+          "description": "The message asks for sensitive information or pressures you to sign in or verify your account.",
+          "evidence": [
+            {
+              "field": "Body",
+              "match": "sign in with your email password",
+              "value": "tails are attached. Open the advice and sign in with your email password to view it. Portal: hxxps://xn--pypal-4"
+            }
+          ],
+          "rule_id": "CONTENT_CREDENTIAL_REQUEST",
+          "score": 35
+        },
+        {
           "analyzer": "attachments",
           "description": "An HTML or SVG attachment, a common way to deliver a fake login page.",
           "evidence": [
@@ -77,19 +90,6 @@
           ],
           "rule_id": "ATT_HTML_FILE",
           "score": 20
-        },
-        {
-          "analyzer": "content",
-          "description": "The text asks for a password, verification code or similar.",
-          "evidence": [
-            {
-              "field": "Body",
-              "match": "sign in with your email password",
-              "value": "tails are attached. Open the advice and sign in with your email password to view it. Portal: hxxps://xn--pypal-4"
-            }
-          ],
-          "rule_id": "CONTENT_CREDENTIAL_REQUEST",
-          "score": 15
         },
         {
           "analyzer": "urls",
@@ -154,7 +154,7 @@
       ],
       "reply_to": [],
       "return_path": null,
-      "score": 45,
+      "score": 65,
       "sent_at": "2026-11-24T05:44:58+00:00",
       "subject": "Payment advice",
       "verdict": "suspicious"

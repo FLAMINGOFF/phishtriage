@@ -54,7 +54,7 @@
         },
         {
           "analyzer": "content",
-          "description": "Urgent or threatening language (counted once).",
+          "description": "The message uses urgent or threatening language.",
           "evidence": [
             {
               "field": "Body",

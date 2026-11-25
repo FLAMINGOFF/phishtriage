@@ -17,6 +17,19 @@
       "defects": [],
       "findings": [
         {
+          "analyzer": "content",
+          "description": "The message asks for sensitive information or pressures you to sign in or verify your account.",
+          "evidence": [
+            {
+              "field": "Body",
+              "match": "Keep your current password",
+              "value": "Your password expires today. Keep your current password here: hxxps://helpdesk-example[.]test/kee"
+            }
+          ],
+          "rule_id": "CONTENT_CREDENTIAL_REQUEST",
+          "score": 35
+        },
+        {
           "analyzer": "sender",
           "description": "The display name claims to be us, but the address is external.",
           "evidence": [
@@ -36,20 +49,7 @@
         },
         {
           "analyzer": "content",
-          "description": "The text asks for a password, verification code or similar.",
-          "evidence": [
-            {
-              "field": "Body",
-              "match": "Keep your current password",
-              "value": "Your password expires today. Keep your current password here: hxxps://helpdesk-example[.]test/kee"
-            }
-          ],
-          "rule_id": "CONTENT_CREDENTIAL_REQUEST",
-          "score": 15
-        },
-        {
-          "analyzer": "content",
-          "description": "Urgent or threatening language (counted once).",
+          "description": "The message uses urgent or threatening language.",
           "evidence": [
             {
               "field": "Body",
@@ -113,7 +113,7 @@
       ],
       "reply_to": [],
       "return_path": null,
-      "score": 40,
+      "score": 60,
       "sent_at": "2026-11-24T00:29:55+00:00",
       "subject": "Password expiry notice",
       "verdict": "suspicious"
