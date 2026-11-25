@@ -111,6 +111,12 @@ same held-out set. The 90% recall target remains unmet.
   trigger false positives. Authentication FPR needs modern ham through a trusted MX.
 
 ## Decision log
+- Follow-up to PR #12: let a stated account lockout, suspension or detected unusual
+  activity support a generic English request from the same or an immediately adjacent
+  sentence, within 240 characters in the same field and paragraph. Reserve the wider
+  window for account alerts. “Now” or “immediately” alone provides no evidence, but
+  it can reinforce an explicit time-pressure statement in the request clause. Keep
+  the 35-point weight, verdict thresholds and the prior routine-mail regressions.
 - PR #12 review: keep the 35-point credential weight, but require credentials, an
   access threat or a deadline in the same clause as a generic English account or
   sign-in request. A routine subscription, statement, address change or two-factor

@@ -229,6 +229,54 @@ def test_routine_requests_with_unrelated_urgency(example_policy: Policy, text: s
     assert "CONTENT_CREDENTIAL_REQUEST" not in hits
 
 
+@pytest.mark.parametrize(
+    ("text", "cue"),
+    [
+        ("Your mailbox will be suspended. Verify your account now.", "mailbox will be suspended"),
+        ("Unusual activity detected. Please verify your account immediately.", "Unusual activity"),
+        ("Your account has been suspended. Click here to verify your identity.", "suspended"),
+        ("There is no time to waste, confirm your mailbox now.", "no time to waste"),
+        ("Verify your account. Your mailbox will be locked.", "mailbox will be locked"),
+        (
+            "Confirm your identity! We detected unusual sign-in activity.",
+            "unusual sign-in activity",
+        ),
+        ("Time is running out, immediately confirm your mailbox.", "Time is running out"),
+    ],
+)
+def test_account_alert_supports_request(example_policy: Policy, text: str, cue: str) -> None:
+    hits = run(content.analyze, message(text=text), example_policy)
+    assert any(cue in e.value for e in hits["CONTENT_CREDENTIAL_REQUEST"].evidence)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Please confirm your account now.",
+        "Please verify your email address immediately to activate your subscription.",
+        "There is no time to waste, please confirm your email address.",
+        "Confirm your account to get the newsletter now. Time is running out.",
+        "Log in to your account now. Your invoice is due by midnight.",
+        "Unusual activity detected. The investigation is over. Verify your account now.",
+        "Verify your account now. Thanks for subscribing. Your mailbox will be locked.",
+        "Your account has been locked.\n\nPlease confirm your email address.",
+        "Your account has not been suspended. Verify your account now.",
+        "No unusual activity was detected. Please verify your account now.",
+        "If unusual activity is detected, we will call you. Confirm your account now.",
+        "Call support if your account is locked. Please confirm your email address.",
+        "Unusual activity detected. Never verify your account by email.",
+    ],
+)
+def test_routine_request_without_supporting_alert(example_policy: Policy, text: str) -> None:
+    hits = run(content.analyze, message(text=text), example_policy)
+    assert "CONTENT_CREDENTIAL_REQUEST" not in hits
+
+
+def test_account_alert_in_other_field(example_policy: Policy) -> None:
+    raw = message(subject="Unusual activity detected.", text="Please verify your account now.")
+    assert "CONTENT_CREDENTIAL_REQUEST" not in run(content.analyze, raw, example_policy)
+
+
 def test_attachment_text_is_static_and_bounded(example_policy: Policy) -> None:
     from app.analyzers.html_content import MAX_SCAN_CHARS
 
