@@ -1,0 +1,474 @@
+{
+  "analysis_errors": {},
+  "metadata": {
+    "commit": "5c08f26c25c4a1e4a366687d19ae5045d467b27a",
+    "cross_class_duplicates": 0,
+    "policy_sha256": "49c21767681a3f2f056c60fe746c632c2b71abb955d8ca80164ca90a4d3b086e",
+    "python": "3.12.16",
+    "rules_sha256": "ccdf053a8bafe2e3794568db1ba18be300b0a92534336a20bc33e1e8facb46a4",
+    "source_counts": {
+      "ham": 2750,
+      "phish": 101
+    },
+    "unique_raw_messages": {
+      "ham": 2750,
+      "phish": 101
+    }
+  },
+  "runs": {
+    "brands": {
+      "confusion": {
+        "ham": {
+          "low_risk": 106,
+          "malicious": 1,
+          "no_issues": 2597,
+          "suspicious": 46
+        },
+        "phish": {
+          "low_risk": 50,
+          "no_issues": 48,
+          "suspicious": 3
+        }
+      },
+      "false_negative_rule_counts": {
+        "ATT_HTML_FILE": 10,
+        "AUTH_NO_TRUSTED_RESULTS": 96,
+        "CONTENT_CREDENTIAL_REQUEST": 15,
+        "CONTENT_URGENCY": 11,
+        "SENDER_DISPLAY_NAME_SPOOF": 4,
+        "SENDER_FREEMAIL_IMPERSONATION": 1,
+        "SENDER_REPLY_TO_MISMATCH": 4,
+        "URL_CREDENTIAL_FORM": 2,
+        "URL_SHORTENER": 2,
+        "URL_TEXT_HREF_MISMATCH": 20
+      },
+      "false_positive_rule_counts": {
+        "ATT_EXECUTABLE": 1,
+        "AUTH_NO_TRUSTED_RESULTS": 47,
+        "CONTENT_CREDENTIAL_REQUEST": 1,
+        "SENDER_DISPLAY_NAME_SPOOF": 2,
+        "SENDER_REPLY_TO_MISMATCH": 5,
+        "URL_CREDENTIAL_FORM": 46,
+        "URL_IP_HOST": 1,
+        "URL_SHORTENER": 5,
+        "URL_TEXT_HREF_MISMATCH": 40
+      },
+      "metrics": {
+        "f1": 0.03973509933774834,
+        "false_positive_rate": 0.01709090909090909,
+        "fn": 98,
+        "fp": 47,
+        "ham": 2750,
+        "phish": 101,
+        "precision": 0.06,
+        "recall": 0.0297029702970297,
+        "tn": 2703,
+        "tp": 3
+      },
+      "rejected": 0,
+      "rule_rates": [
+        [
+          "AUTH_NO_TRUSTED_RESULTS",
+          99,
+          2600,
+          0.9801980198019802,
+          0.9454545454545454
+        ],
+        [
+          "SENDER_REPLY_TO_MISMATCH",
+          4,
+          502,
+          0.039603960396039604,
+          0.18254545454545454
+        ],
+        [
+          "URL_TEXT_HREF_MISMATCH",
+          23,
+          80,
+          0.22772277227722773,
+          0.02909090909090909
+        ],
+        [
+          "CONTENT_URGENCY",
+          14,
+          77,
+          0.13861386138613863,
+          0.028
+        ],
+        [
+          "URL_CREDENTIAL_FORM",
+          2,
+          86,
+          0.019801980198019802,
+          0.03127272727272727
+        ],
+        [
+          "CONTENT_CREDENTIAL_REQUEST",
+          18,
+          5,
+          0.1782178217821782,
+          0.0018181818181818182
+        ],
+        [
+          "ATT_HTML_FILE",
+          10,
+          0,
+          0.09900990099009901,
+          0
+        ],
+        [
+          "URL_SHORTENER",
+          2,
+          5,
+          0.019801980198019802,
+          0.0018181818181818182
+        ],
+        [
+          "SENDER_DISPLAY_NAME_SPOOF",
+          4,
+          2,
+          0.039603960396039604,
+          0.0007272727272727272
+        ],
+        [
+          "URL_IP_HOST",
+          0,
+          5,
+          0,
+          0.0018181818181818182
+        ],
+        [
+          "ATT_EXECUTABLE",
+          0,
+          1,
+          0,
+          0.0003636363636363636
+        ],
+        [
+          "SENDER_FREEMAIL_IMPERSONATION",
+          1,
+          0,
+          0.009900990099009901,
+          0
+        ]
+      ],
+      "sweep": {
+        "25": {
+          "f1": 0.1188118811881188,
+          "false_positive_rate": 0.032363636363636365,
+          "fn": 89,
+          "fp": 89,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0.1188118811881188,
+          "recall": 0.1188118811881188,
+          "tn": 2661,
+          "tp": 12
+        },
+        "30": {
+          "f1": 0.08641975308641976,
+          "false_positive_rate": 0.019636363636363636,
+          "fn": 94,
+          "fp": 54,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0.11475409836065574,
+          "recall": 0.06930693069306931,
+          "tn": 2696,
+          "tp": 7
+        },
+        "35": {
+          "f1": 0.07643312101910828,
+          "false_positive_rate": 0.01818181818181818,
+          "fn": 95,
+          "fp": 50,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0.10714285714285714,
+          "recall": 0.0594059405940594,
+          "tn": 2700,
+          "tp": 6
+        },
+        "40": {
+          "f1": 0.03973509933774834,
+          "false_positive_rate": 0.01709090909090909,
+          "fn": 98,
+          "fp": 47,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0.06,
+          "recall": 0.0297029702970297,
+          "tn": 2703,
+          "tp": 3
+        },
+        "45": {
+          "f1": 0,
+          "false_positive_rate": 0.015272727272727273,
+          "fn": 101,
+          "fp": 42,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0,
+          "recall": 0,
+          "tn": 2708,
+          "tp": 0
+        },
+        "50": {
+          "f1": 0,
+          "false_positive_rate": 0.0007272727272727272,
+          "fn": 101,
+          "fp": 2,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0,
+          "recall": 0,
+          "tn": 2748,
+          "tp": 0
+        },
+        "55": {
+          "f1": 0,
+          "false_positive_rate": 0.0007272727272727272,
+          "fn": 101,
+          "fp": 2,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0,
+          "recall": 0,
+          "tn": 2748,
+          "tp": 0
+        },
+        "60": {
+          "f1": 0,
+          "false_positive_rate": 0.0007272727272727272,
+          "fn": 101,
+          "fp": 2,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0,
+          "recall": 0,
+          "tn": 2748,
+          "tp": 0
+        }
+      }
+    },
+    "default": {
+      "confusion": {
+        "ham": {
+          "low_risk": 108,
+          "malicious": 1,
+          "no_issues": 2597,
+          "suspicious": 44
+        },
+        "phish": {
+          "low_risk": 46,
+          "no_issues": 52,
+          "suspicious": 3
+        }
+      },
+      "false_negative_rule_counts": {
+        "ATT_HTML_FILE": 10,
+        "AUTH_NO_TRUSTED_RESULTS": 96,
+        "CONTENT_CREDENTIAL_REQUEST": 15,
+        "CONTENT_URGENCY": 11,
+        "SENDER_REPLY_TO_MISMATCH": 4,
+        "URL_CREDENTIAL_FORM": 2,
+        "URL_SHORTENER": 2,
+        "URL_TEXT_HREF_MISMATCH": 20
+      },
+      "false_positive_rule_counts": {
+        "ATT_EXECUTABLE": 1,
+        "AUTH_NO_TRUSTED_RESULTS": 45,
+        "CONTENT_CREDENTIAL_REQUEST": 1,
+        "SENDER_REPLY_TO_MISMATCH": 5,
+        "URL_CREDENTIAL_FORM": 44,
+        "URL_IP_HOST": 1,
+        "URL_SHORTENER": 5,
+        "URL_TEXT_HREF_MISMATCH": 40
+      },
+      "metrics": {
+        "f1": 0.040268456375838924,
+        "false_positive_rate": 0.016363636363636365,
+        "fn": 98,
+        "fp": 45,
+        "ham": 2750,
+        "phish": 101,
+        "precision": 0.0625,
+        "recall": 0.0297029702970297,
+        "tn": 2705,
+        "tp": 3
+      },
+      "rejected": 0,
+      "rule_rates": [
+        [
+          "AUTH_NO_TRUSTED_RESULTS",
+          99,
+          2600,
+          0.9801980198019802,
+          0.9454545454545454
+        ],
+        [
+          "SENDER_REPLY_TO_MISMATCH",
+          4,
+          502,
+          0.039603960396039604,
+          0.18254545454545454
+        ],
+        [
+          "URL_TEXT_HREF_MISMATCH",
+          23,
+          80,
+          0.22772277227722773,
+          0.02909090909090909
+        ],
+        [
+          "CONTENT_URGENCY",
+          14,
+          77,
+          0.13861386138613863,
+          0.028
+        ],
+        [
+          "URL_CREDENTIAL_FORM",
+          2,
+          86,
+          0.019801980198019802,
+          0.03127272727272727
+        ],
+        [
+          "CONTENT_CREDENTIAL_REQUEST",
+          18,
+          5,
+          0.1782178217821782,
+          0.0018181818181818182
+        ],
+        [
+          "ATT_HTML_FILE",
+          10,
+          0,
+          0.09900990099009901,
+          0
+        ],
+        [
+          "URL_SHORTENER",
+          2,
+          5,
+          0.019801980198019802,
+          0.0018181818181818182
+        ],
+        [
+          "URL_IP_HOST",
+          0,
+          5,
+          0,
+          0.0018181818181818182
+        ],
+        [
+          "ATT_EXECUTABLE",
+          0,
+          1,
+          0,
+          0.0003636363636363636
+        ]
+      ],
+      "sweep": {
+        "25": {
+          "f1": 0.10945273631840796,
+          "false_positive_rate": 0.032363636363636365,
+          "fn": 90,
+          "fp": 89,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0.11,
+          "recall": 0.10891089108910891,
+          "tn": 2661,
+          "tp": 11
+        },
+        "30": {
+          "f1": 0.07547169811320754,
+          "false_positive_rate": 0.01890909090909091,
+          "fn": 95,
+          "fp": 52,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0.10344827586206896,
+          "recall": 0.0594059405940594,
+          "tn": 2698,
+          "tp": 6
+        },
+        "35": {
+          "f1": 0.06493506493506493,
+          "false_positive_rate": 0.017454545454545455,
+          "fn": 96,
+          "fp": 48,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0.09433962264150944,
+          "recall": 0.04950495049504951,
+          "tn": 2702,
+          "tp": 5
+        },
+        "40": {
+          "f1": 0.040268456375838924,
+          "false_positive_rate": 0.016363636363636365,
+          "fn": 98,
+          "fp": 45,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0.0625,
+          "recall": 0.0297029702970297,
+          "tn": 2705,
+          "tp": 3
+        },
+        "45": {
+          "f1": 0,
+          "false_positive_rate": 0.014545454545454545,
+          "fn": 101,
+          "fp": 40,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0,
+          "recall": 0,
+          "tn": 2710,
+          "tp": 0
+        },
+        "50": {
+          "f1": 0,
+          "false_positive_rate": 0.0007272727272727272,
+          "fn": 101,
+          "fp": 2,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0,
+          "recall": 0,
+          "tn": 2748,
+          "tp": 0
+        },
+        "55": {
+          "f1": 0,
+          "false_positive_rate": 0.0007272727272727272,
+          "fn": 101,
+          "fp": 2,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0,
+          "recall": 0,
+          "tn": 2748,
+          "tp": 0
+        },
+        "60": {
+          "f1": 0,
+          "false_positive_rate": 0.0007272727272727272,
+          "fn": 101,
+          "fp": 2,
+          "ham": 2750,
+          "phish": 101,
+          "precision": 0,
+          "recall": 0,
+          "tn": 2748,
+          "tp": 0
+        }
+      }
+    }
+  },
+  "run_url": "https://github.com/FLAMINGOFF/phishtriage/actions/runs/45516152754"
+}
