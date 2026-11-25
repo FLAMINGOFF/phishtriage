@@ -1,7 +1,8 @@
 # Progress
 
 ## Current milestone
-All milestones done (v1.0.0). Open: the public-corpus evaluation (see Open issues).
+M0–M6 implementation complete (v1.0.0). Releases and public-corpus baseline are published.
+Detection-quality target remains unmet: public-corpus recall is 2.97% (see Open issues).
 
 ## Done
 - M0 – Skeleton: uv project, ruff/mypy/pytest/pre-commit, settings loader (.env +
@@ -65,11 +66,24 @@ All milestones done (v1.0.0). Open: the public-corpus evaluation (see Open issue
   pip-audit reports no known vulnerability in the locked set, and Trivy reports no HIGH
   or CRITICAL vulnerability with an available fix in the image.
 
+## Release follow-up completed — 2026-11-25
+- Published v0.1.0 at `c6d5a91cac9e0d680c13b938093cff5c58c4b321` (M4) and v1.0.0 at
+  `511e1bb2bb414fb952ef5efd4f2252895eac62a0` (M6), with separate release notes.
+- Merged Dependabot #2 (checkout v7) and #4 (setup-python v7) after successful checks;
+  all six CI jobs passed on combined main commit `a05395f`.
+- Added repository About description and six relevant topics.
+- Ran checksum-pinned Nazario 2021 + SpamAssassin ham evaluation on 2,851 messages.
+  The 21 evaluation/verdict tests passed; no rejected messages or analysis errors.
+  Results, limitations and reproducible workflow are in `docs/evaluation.md`.
+
 ## Open issues
-- The evaluation on public corpora (phishing_pot or Nazario's corpus against SpamAssassin
-  ham) has not been run: the build environment could not reach the hosts that serve
-  them. `docs/evaluation.md` has the commands; its "Public corpora" section and the
-  README table are to be filled in with the result, and the rule weights tuned from it.
+- Detection quality needs substantial improvement: at threshold 40, both policies
+  detect 3/101 phishing messages (2.97% recall), below the 90% target. Default-policy
+  precision is 6.25%, false-positive rate 1.64%. Do not treat passing synthetic tests
+  or a successful workflow as real-world detection validation.
+- Review broad HTML form/link-mismatch heuristics and missing phishing signals, then
+  evaluate changes on separate development and held-out, contemporary corpora with
+  organisation-specific policy and separately measured threat intelligence.
 
 ## Decision log
 - RQ instead of Celery: simpler, enough for a single node (fixed by the plan).
@@ -302,16 +316,9 @@ All milestones done (v1.0.0). Open: the public-corpus evaluation (see Open issue
   assembled with ffmpeg; it shows only synthetic data.
 
 ## Manual steps for the user
-- Create the git tags and GitHub releases (this build session could not push tags):
-  `v0.1.0` on commit `c6d5a91` (merge of M4) and `v1.0.0` on the merge commit of M6;
-  release notes are in `releases/` in the project files.
-- Run the public-corpus evaluation (see Open issues and `docs/evaluation.md`) and paste
-  the Markdown tables into `docs/evaluation.md` and the README.
 - Create the first console account: `docker compose exec web python -m app.cli create-user
   you@example.edu --role admin` (asks for a password of 12+ characters).
 - Optional: set `API_TOKEN` in `.env` (at least 32 characters) to enable the REST API.
 - Optional: create a VirusTotal account and put `VT_API_KEY` in `.env`.
 - Optional: request a URLhaus Auth-Key at https://auth.abuse.ch/ and put `URLHAUS_AUTH_KEY` in `.env`.
 - Optional, with keys set: `uv run pytest -m live tests/live` checks the real providers.
-- GitHub repository settings: add the topics `phishing`, `email-security`, `soc`,
-  `threat-intelligence`, `fastapi`.
