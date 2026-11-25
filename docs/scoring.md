@@ -43,7 +43,7 @@ issues. Analysts can re-classify; the original score is kept.
 
 ## Rules
 
-Initial points from the project plan. How they are measured and tuned: [evaluation.md](evaluation.md).
+Measured weights and limits: [evaluation.md](evaluation.md). The verdict thresholds are unchanged.
 
 | Rule ID | Analyzer | Points | Meaning |
 | --- | --- | --- | --- |
@@ -57,8 +57,8 @@ Initial points from the project plan. How they are measured and tuned: [evaluati
 | `SENDER_NEW_DOMAIN` | sender | 15 | The sender's domain was registered less than 30 days ago. |
 | `SENDER_REPLY_TO_MISMATCH` | sender | 10 | Replies go to a different domain than the sender's. |
 | `URL_INTEL_MALICIOUS` | urls | 50, forces Malicious | Threat intelligence knows a link as malicious. |
-| `URL_CREDENTIAL_FORM` | urls | 25 | The email itself contains a form or a password field. |
-| `URL_TEXT_HREF_MISMATCH` | urls | 20 | A link shows one address but goes to another domain. |
+| `URL_CREDENTIAL_FORM` | urls | 25 | Body or attached HTML has a credential input or a form posting outside the sender organisation. |
+| `URL_TEXT_HREF_MISMATCH` | urls | 20 | A link shows another domain, excluding explicit aliases of the sender organisation. |
 | `URL_IP_HOST` | urls | 15 | A link points to a bare IP address. |
 | `URL_PUNYCODE` | urls | 10 | A link host uses punycode (xn--), often to hide look-alike letters. |
 | `URL_SHORTENER` | urls | 5 | A link uses a URL shortener that hides the destination. |
@@ -68,7 +68,7 @@ Initial points from the project plan. How they are measured and tuned: [evaluati
 | `ATT_MACRO` | attachments | 30 | An Office document contains VBA macros. |
 | `ATT_HTML_FILE` | attachments | 20 | An HTML or SVG attachment, a common way to deliver a fake login page. |
 | `ATT_ENCRYPTED_ARCHIVE` | attachments | 20 | A password-protected archive, which scanners cannot look into. |
-| `CONTENT_CREDENTIAL_REQUEST` | content | 15 | The text asks for a password, verification code or similar. |
+| `CONTENT_CREDENTIAL_REQUEST` | content | 35 | Body or attached HTML requests credentials, login or account verification. |
 | `CONTENT_URGENCY` | content | 5 | Urgent or threatening language (counted once). |
 
 Rule details that matter in practice:
@@ -91,7 +91,23 @@ Rule details that matter in practice:
   7z are not listed.
 - **Content** rules are English and Chinese keyword patterns within one sentence; a
   preceding "never" / "不会" (as in "we will never ask for your password") cancels a
-  match.
+  match. Matching text is NFKC-normalised and invisible format controls are removed;
+  evidence shows this normalised text. Passive verification requests and login requests
+  to access an invoice or document count; a document download alone does not.
+- **Forms** require an enabled password input, an explicit passcode/OTP/PIN field or
+  password/one-time-code autocomplete, or an explicit HTTP(S) POST action outside the
+  sender's organisation. Email-only subscription fields, GET searches and relative
+  actions do not establish this signal. POST ownership comparison needs original sender
+  headers; inline forwards only get the credential-input check. JavaScript-created forms
+  and button overrides are not interpreted.
+- **Organisation aliases** for link mismatch and POST ownership use `org_domains` only
+  when the sender and all compared domains belong to that set. Same registered domains
+  already match. Protected brands or an arbitrary tracking/redirect service do not prove
+  common ownership. Unknown cross-domain newsletter services can still raise findings.
+- **Direct HTML attachments** are decoded as UTF-8 (UTF-16 with BOM) and read statically
+  for forms and content, at most 20 files and 1 MB total bytes, with 200,000 characters per
+  HTML document. Scripts, remote resources and nested archives are never evaluated.
+  Text beyond these limits, other encodings, image-only and encrypted lures can be missed.
 
 ## Evidence
 

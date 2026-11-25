@@ -37,13 +37,62 @@ def test_url_intel(example_policy: Policy) -> None:
 
 
 def test_credential_form(example_policy: Policy) -> None:
-    form = '<form action="https://c.example/p"><input name="u"></form>'
+    form = '<form method="post" action="https://c.example/p"><input name="u"></form>'
     assert "URL_CREDENTIAL_FORM" in run(urls.analyze, message(html=form), example_policy)
     password = '<p>Password: <input type="password"></p>'
     assert "URL_CREDENTIAL_FORM" in run(urls.analyze, message(html=password), example_policy)
     plain = "<p>Hello <b>there</b></p>"
     assert "URL_CREDENTIAL_FORM" not in run(urls.analyze, message(html=plain), example_policy)
     assert "URL_CREDENTIAL_FORM" not in run(urls.analyze, message(), example_policy)
+
+
+@pytest.mark.parametrize(
+    "html",
+    [
+        '<form action="https://search.example/"><input name="q"></form>',
+        '<form method="post" action="https://sender.example/news"><input type="email"></form>',
+        '<form method="post" action="/subscribe"><input type="email"></form>',
+        '<input type="hidden" name="password"><input type="password" disabled>',
+        '<form method="get" action="https://search.example/"><input name="q"></form>',
+    ],
+)
+def test_plain_forms_do_not_score(example_policy: Policy, html: str) -> None:
+    assert "URL_CREDENTIAL_FORM" not in run(urls.analyze, message(html=html), example_policy)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        '<input autocomplete="section-login one-time-code">',
+        '<input type="tel" name="otp">',
+        '<input name="passcode">',
+        '<input type="password">',
+    ],
+)
+def test_credential_fields_in_attachments(example_policy: Policy, field: str) -> None:
+    raw = message(attachments=[("login.html", "text/html", field.encode())])
+    assert "URL_CREDENTIAL_FORM" in run(urls.analyze, raw, example_policy)
+    benign = message(
+        attachments=[("newsletter.html", "text/html", b'<form><input type="email"></form>')]
+    )
+    assert "URL_CREDENTIAL_FORM" not in run(urls.analyze, benign, example_policy)
+
+
+def test_org_aliases_require_sender_and_both_link_domains(example_policy: Policy) -> None:
+    policy = example_policy.model_copy(update={"org_domains": ("example.edu", "example.org")})
+    html = '<a href="https://news.example.org/track">https://www.example.edu/</a>'
+    internal = message(from_="news@example.edu", html=html)
+    assert "URL_TEXT_HREF_MISMATCH" not in run(urls.analyze, internal, policy)
+    assert "URL_TEXT_HREF_MISMATCH" in run(urls.analyze, internal, example_policy)
+    assert "URL_TEXT_HREF_MISMATCH" in run(urls.analyze, message(html=html), policy)
+    external = html.replace("news.example.org", "external.example")
+    assert "URL_TEXT_HREF_MISMATCH" in run(
+        urls.analyze, message(from_="news@example.edu", html=external), policy
+    )
+    form = '<form method="post" action="https://example.org/subscribe"><input type="email"></form>'
+    assert "URL_CREDENTIAL_FORM" not in run(
+        urls.analyze, message(from_="news@example.edu", html=form), policy
+    )
 
 
 @pytest.mark.parametrize(
@@ -114,6 +163,12 @@ def test_clean_links_raise_nothing(example_policy: Policy) -> None:
         "Verify your account now.",
         "请在下方输入密码以继续使用邮箱。",
         "请确认您的账户信息。",
+        "Account verification is required to continue.",
+        "Your mail box needs to be re-verified.",
+        "Please log in to view your invoice.",
+        "Please update your email account.",
+        "Keep your pa\u2060ssword to continue.",
+        "\uff36\uff45\uff52\uff49\uff46\uff59 your account now.",
     ],
 )
 def test_credential_request(example_policy: Policy, text: str) -> None:
@@ -130,11 +185,45 @@ def test_credential_request(example_policy: Policy, text: str) -> None:
         "Confirm your attendance.\n\nThe password policy is on the intranet.",  # new paragraph
         "IT 部门不会要求您提供密码。",
         "The library opens at nine.",
+        "The invoice is ready to download.",
+        "No account verification is required.",
+        "Never log in to view an unexpected invoice.",
+        "Your email address was confirmed yesterday.",
+        "We detected unusual sign-in activity on your account.",
     ],
 )
 def test_no_credential_request(example_policy: Policy, text: str) -> None:
     hits = run(content.analyze, message(text=text), example_policy)
     assert "CONTENT_CREDENTIAL_REQUEST" not in hits, text
+
+
+def test_attachment_text_is_static_and_bounded(example_policy: Policy) -> None:
+    from app.analyzers.html_content import MAX_SCAN_CHARS
+
+    lure = b'<p>Verify your password</p><script>fetch("https://evil.example")</script>'
+    raw = message(attachments=[("login.html", "text/html", lure)])
+    assert "CONTENT_CREDENTIAL_REQUEST" in run(content.analyze, raw, example_policy)
+    for body in (
+        b"<p>Meeting notes</p>",
+        b"<script>Verify your password</script>",
+        b" " * MAX_SCAN_CHARS + lure,
+    ):
+        raw = message(attachments=[("notes.html", "text/html", body)])
+        assert "CONTENT_CREDENTIAL_REQUEST" not in run(content.analyze, raw, example_policy)
+
+
+def test_html_attachment_byte_and_count_limits(example_policy: Policy) -> None:
+    from app.analyzers.html_content import MAX_ATTACHMENT_BYTES, MAX_HTML_ATTACHMENTS
+
+    field = '<input type="password">'
+    for prefix in (
+        [("large.html", "text/html", b" " * MAX_ATTACHMENT_BYTES)],
+        [("empty.html", "text/html", b"notes")] * MAX_HTML_ATTACHMENTS,
+    ):
+        raw = message(attachments=[*prefix, ("login.html", "text/html", field.encode())])
+        assert "URL_CREDENTIAL_FORM" not in run(urls.analyze, raw, example_policy)
+    raw = message(attachments=[("login.html", "text/html", field.encode("utf-16"))])
+    assert "URL_CREDENTIAL_FORM" in run(urls.analyze, raw, example_policy)
 
 
 def test_urgency_counts_once(example_policy: Policy) -> None:
@@ -156,6 +245,17 @@ def test_urgency_counts_once(example_policy: Policy) -> None:
 def test_no_urgency(example_policy: Policy) -> None:
     raw = message(subject="November digest", text="Read the latest research news.")
     assert run(content.analyze, raw, example_policy) == {}
+
+
+def test_urgency_in_static_attachment(example_policy: Policy) -> None:
+    urgent = message(
+        attachments=[("notice.html", "text/html", b"<p>Act immedia\xe2\x81\xa0tely</p>")]
+    )
+    assert "CONTENT_URGENCY" in run(content.analyze, urgent, example_policy)
+    benign = message(
+        attachments=[("notes.html", "text/html", b"<p>The library opens tomorrow.</p>")]
+    )
+    assert "CONTENT_URGENCY" not in run(content.analyze, benign, example_policy)
 
 
 def test_html_text_is_read_and_snippets_are_defanged(example_policy: Policy) -> None:

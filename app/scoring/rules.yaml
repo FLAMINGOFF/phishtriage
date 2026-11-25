@@ -3,8 +3,8 @@
 # Each rule has a fixed ID (used in code, findings, exports and the audit log), the
 # analyzer that raises it, its points and a one-line description shown to analysts and
 # reporters. Change points here, not in code; the engine refuses unknown keys, unknown
-# analyzers and rules the code does not know. Initial values from the project plan; M6
-# re-tunes them from the evaluation set.
+# analyzers and rules the code does not know. See docs/evaluation.md for development-
+# split tuning and independent held-out measurements.
 version: 1
 
 thresholds:          # total score -> verdict (the top band also covers "forces_verdict")
@@ -61,11 +61,11 @@ rules:
   URL_CREDENTIAL_FORM:
     analyzer: urls
     score: 25
-    description: The email itself contains a form or a password field.
+    description: Body or attached HTML has a credential input or a form posting outside the sender organisation.
   URL_TEXT_HREF_MISMATCH:
     analyzer: urls
     score: 20
-    description: A link shows one address but goes to another domain.
+    description: A link shows another domain, excluding explicit aliases of the sender organisation.
   URL_IP_HOST:
     analyzer: urls
     score: 15
@@ -107,9 +107,9 @@ rules:
 
   CONTENT_CREDENTIAL_REQUEST:
     analyzer: content
-    score: 15
-    description: The text asks for a password, verification code or similar.
+    score: 35
+    description: Body or attached HTML requests credentials, login or account verification (normalised text).
   CONTENT_URGENCY:
     analyzer: content
     score: 5
-    description: Urgent or threatening language (counted once).
+    description: Urgent or threatening language in normalised body or attached HTML (counted once).

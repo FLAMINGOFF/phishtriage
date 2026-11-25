@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from app.analyzers.base import AnalysisContext, Evidence, Hit, evidence, hit
+from app.analyzers.html_content import html_documents
 from app.parsing.defang import defang_domain
 from app.parsing.domains import has_public_suffix, parse_ip, registered_domain, to_ascii
 from app.parsing.html import HtmlInfo, analyze_html
@@ -26,7 +27,20 @@ def _shown_hosts(text: str) -> list[str]:
     return hosts
 
 
-def _text_href_mismatches(info: HtmlInfo) -> list[Evidence]:
+def _same_sender_org(ctx: AnalysisContext, *domains: str) -> bool:
+    sender = ctx.email.from_addr
+    if sender is None or ctx.email.forwarded_inline:
+        return False
+    sender_domain = registered_domain(sender.domain)
+    if all(domain == sender_domain for domain in domains):
+        return True
+    # Only explicit organisation aliases establish common ownership. Protected brands
+    # and third-party tracking services are not a shared trust boundary.
+    own = {registered_domain(d) for d in ctx.policy.org_domains}
+    return sender_domain in own and all(domain in own for domain in domains)
+
+
+def _text_href_mismatches(info: HtmlInfo, ctx: AnalysisContext) -> list[Evidence]:
     items = []
     for link in info.links:
         if link.tag != "a" or not link.text:
@@ -37,7 +51,10 @@ def _text_href_mismatches(info: HtmlInfo) -> list[Evidence]:
             continue
         target_domain = registered_domain(target_host)
         for shown in _shown_hosts(link.text):
-            if registered_domain(shown) != target_domain:
+            shown_domain = registered_domain(shown)
+            if shown_domain != target_domain and not _same_sender_org(
+                ctx, shown_domain, target_domain
+            ):
                 items.append(
                     evidence(
                         "HTML link",
@@ -68,21 +85,30 @@ def analyze(ctx: AnalysisContext) -> list[Hit]:
     if malicious:
         hits.append(hit("URL_INTEL_MALICIOUS", malicious))
 
-    if info is not None and (info.form_count or info.password_inputs):
-        hits.append(
-            hit(
-                "URL_CREDENTIAL_FORM",
-                [
-                    evidence(
-                        "HTML body",
-                        f"{info.form_count} form(s), {info.password_inputs} password field(s)",
-                        "form in the email body" if info.form_count else "password field",
-                    )
-                ],
+    forms = []
+    for name, document in html_documents(ctx):
+        if document.credential_inputs:
+            forms.append(
+                evidence(
+                    name, f"{document.credential_inputs} credential input(s)", "credential field"
+                )
             )
-        )
+        for action in document.post_actions:
+            target = normalize_url(action)
+            host = url_host(target) if target else None
+            if (
+                host
+                and email.from_addr
+                and not email.forwarded_inline
+                and not _same_sender_org(ctx, registered_domain(host))
+            ):
+                forms.append(
+                    evidence(name, action, "form posts outside sender organisation", kind="url")
+                )
+    if forms:
+        hits.append(hit("URL_CREDENTIAL_FORM", forms))
 
-    if info is not None and (mismatches := _text_href_mismatches(info)):
+    if info is not None and (mismatches := _text_href_mismatches(info, ctx)):
         hits.append(hit("URL_TEXT_HREF_MISMATCH", mismatches))
 
     ip_hosts, punycode, shorteners = [], [], []

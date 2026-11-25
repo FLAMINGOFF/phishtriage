@@ -178,7 +178,7 @@ def test_tuned_rules_file_is_used(
         report = submit(session, store, fixture_bytes("03"), source=ReportSource.UPLOAD)
         session.commit()
         process(session, store, report.id, example_policy, rules_file=tuned)
-        assert report.score == 85
+        assert report.score == 105  # 60 IP + 35 credential request + 5 softfail + 5 urgency
         assert report.verdict is Verdict.MALICIOUS
 
 

@@ -1,18 +1,18 @@
 """Content analyzer: what the text asks the reader to do (English and Chinese).
 
-Keyword rules are crude on purpose: they are cheap, explainable and only worth a few
-points each. The evidence shows the exact sentence fragment that matched.
+These bounded heuristics are explainable but incomplete. The evidence shows the
+normalised sentence fragment that matched, including statically read HTML attachments.
 """
 
 from __future__ import annotations
 
 import re
+import unicodedata
 
 from app.analyzers.base import AnalysisContext, Evidence, Hit, evidence, hit
+from app.analyzers.html_content import MAX_SCAN_CHARS, html_documents
 from app.parsing.defang import defang_text
-from app.parsing.html import analyze_html
 
-MAX_SCAN_CHARS = 200_000
 # Up to N characters within one sentence; single line breaks are fine (plain-text mail is
 # wrapped at ~72 columns), a blank line ends the search.
 _GAP = r"(?:(?!\n[ \t\r]{{0,10}}\n)[^.!?]){{0,{n}}}"
@@ -46,6 +46,27 @@ CREDENTIAL_PATTERNS = [
         r"(?:密码|口令|验证码|动态码|校验码|账号信息|登录信息|银行卡)"
     ),
     re.compile(r"(?:验证|确认|核实)(?:您的|你的)?(?:身份|账户|账号|邮箱)"),
+    # Account-access requests are often nominal/passive rather than "verify password".
+    re.compile(
+        r"\b(?:account|mailbox|e-?mail|identity)\s+(?:re[- ]?)?verification\s+"
+        r"(?:is\s+)?(?:required|needed)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"\b(?:mail\s?box|account)\b{_GAP.format(n=25)}"
+        r"\b(?:needs? to be|must be)\s+(?:re[- ]?)?verified\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"\b(?:log|sign)[ -]?(?:in|on)\s+(?:to|with|using|your)\b{_GAP.format(n=45)}"
+        r"\b(?:password|mailbox|e-?mail|account|invoice|document)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:verify|confirm|validate|re-?activate|update)\s+(?:your\s+)?"
+        r"(?:e-?mail\s+)?(?:address|account|mailbox|security settings)\b",
+        re.IGNORECASE,
+    ),
 ]
 URGENCY_PATTERNS = [
     re.compile(
@@ -68,19 +89,26 @@ URGENCY_PATTERNS = [
 ]
 # "We will never ask for your password" is advice, not a request.
 _NEGATION = re.compile(
-    r"(?:\bnever|\bnot|n't|\bno one\b|绝不|不会|切勿|请勿|不要|永远不)[^.!?\n]{0,25}$",
+    r"(?:\bnever|\bnot|n't|\bno\b|绝不|不会|切勿|请勿|不要|永远不)[^.!?\n]{0,25}$",
     re.IGNORECASE,
 )
+
+
+def _normalize(text: str) -> str:
+    # Remove invisible format controls, not spaces/punctuation (sentence boundaries
+    # remain significant). Compatibility forms include full-width Latin characters.
+    return "".join(
+        ch for ch in unicodedata.normalize("NFKC", text) if unicodedata.category(ch) != "Cf"
+    )
 
 
 def _text(ctx: AnalysisContext) -> list[tuple[str, str]]:
     email = ctx.email
     fields = [("Subject", email.subject), ("Body", email.body_text[:MAX_SCAN_CHARS])]
-    if email.body_html:
-        html_text = analyze_html(email.body_html[:MAX_SCAN_CHARS]).text
-        if html_text.strip() and html_text.strip() not in email.body_text:
-            fields.append(("HTML body", html_text))
-    return fields
+    for name, document in html_documents(ctx):
+        if document.text.strip() and document.text.strip() not in email.body_text:
+            fields.append((name, document.text))
+    return [(name, _normalize(text)) for name, text in fields]
 
 
 def _snippet(text: str, start: int, end: int) -> str:

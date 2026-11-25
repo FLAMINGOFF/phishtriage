@@ -86,6 +86,30 @@ Detection-quality target remains unmet: public-corpus recall is 2.97% (see Open 
   organisation-specific policy and separately measured threat intelligence.
 
 ## Decision log
+- Detection tuning: split raw message SHA-256 first nibble < 8 into development;
+  reserve the other half and all Nazario 2025 messages before inspecting errors.
+  No corpus identifiers, recipient identities, dates or mailing-list markers score.
+- Detection tuning: URL_CREDENTIAL_FORM requires an enabled credential input or an
+  explicit HTTP(S) POST outside the sender organisation, including direct HTML
+  attachments. GET/search forms and same-organisation newsletter forms do not score.
+  Cross-domain POST without a known sender is not attributed to an organisation.
+- Detection tuning: URL_TEXT_HREF_MISMATCH exempts explicit org_domains aliases only
+  when sender, displayed domain and target all belong to that organisation. Protected
+  brands and arbitrary redirect providers do not prove shared ownership.
+- Detection tuning: CONTENT_CREDENTIAL_REQUEST includes passive account verification,
+  login-to-document requests and bounded static HTML attachment text. NFKC and removal
+  of invisible format controls recover split keywords; negation remains significant.
+  Scripts/resources are never executed or fetched. Attachment scan limits are 20
+  direct HTML files, 1 MB total bytes and 200,000 decoded characters per document.
+- Detection tuning: CONTENT_URGENCY uses the same bounded, normalised body and direct
+  HTML attachment text, retains its 5-point weight and counts once per message.
+- Detection tuning: compare credential/urgency weights 30/5, 35/5 and 35/10 on dev
+  only. Choose 35/5; 35/10 adds no benefit. Reject informational sign-in activity as
+  a credential request during regression review: final dev is 18/58 TP, 7/1,395 FP.
+  Replace the invalid PNG unit-test stub with a complete image for libmagic portability;
+  update score/evidence snapshots, leaving parsed fields and verdicts unchanged. Keep the original
+  23 rule IDs, verdict thresholds and synthetic analyst labels. Historical data and
+  near-duplicate campaigns limit generalisation; authentication is a separate experiment.
 - RQ instead of Celery: simpler, enough for a single node (fixed by the plan).
 - Secrets only from environment; `settings.yaml` feeds only the `policy` field and rejects
   unknown keys, so a key pasted into YAML is a startup error.

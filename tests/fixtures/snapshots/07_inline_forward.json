@@ -18,7 +18,7 @@
       "findings": [
         {
           "analyzer": "content",
-          "description": "The text asks for a password, verification code or similar.",
+          "description": "Body or attached HTML requests credentials, login or account verification (normalised text).",
           "evidence": [
             {
               "field": "Body",
@@ -27,7 +27,7 @@
             }
           ],
           "rule_id": "CONTENT_CREDENTIAL_REQUEST",
-          "score": 15
+          "score": 35
         },
         {
           "analyzer": "urls",
@@ -44,7 +44,7 @@
         },
         {
           "analyzer": "content",
-          "description": "Urgent or threatening language (counted once).",
+          "description": "Urgent or threatening language in normalised body or attached HTML (counted once).",
           "evidence": [
             {
               "field": "Subject",
@@ -123,7 +123,7 @@
       ],
       "reply_to": [],
       "return_path": null,
-      "score": 40,
+      "score": 60,
       "sent_at": "2026-11-24T10:19:58+00:00",
       "subject": "Fwd: Your parcel is on hold",
       "verdict": "suspicious"

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import struct
 
 import pytest
@@ -23,7 +24,12 @@ from scripts.generate_emails import (
 from tests.unit.analyzer_helpers import message, run
 
 RTLO = chr(0x202E)
-PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+# A complete 1x1 PNG: a signature followed by zeroes is not a valid image and newer
+# libmagic versions correctly reject it, making the benign-file test platform-dependent.
+PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/"
+    "ScLbtAAAAABJRU5ErkJggg=="
+)
 OOXML = {"[Content_Types].xml": b"<Types/>", "word/document.xml": b"<w:document/>"}
 
 
