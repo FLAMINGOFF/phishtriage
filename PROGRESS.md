@@ -2,7 +2,8 @@
 
 ## Current milestone
 M0–M6 implementation complete (v1.0.0). Releases and public-corpus baseline are published.
-Detection-quality target remains unmet: tuned held-out recall is 16.28% (see Open issues).
+The reviewed detector caught 3/43 phishing messages (6.98%) on a second measurement of the
+same held-out set. The 90% recall target remains unmet.
 
 ## Done
 - M0 – Skeleton: uv project, ruff/mypy/pytest/pre-commit, settings loader (.env +
@@ -76,7 +77,7 @@ Detection-quality target remains unmet: tuned held-out recall is 16.28% (see Ope
   The 21 evaluation/verdict tests passed; no rejected messages or analysis errors.
   Results, limitations and reproducible workflow are in `docs/evaluation.md`.
 
-## Detection tuning — 2026-11-25
+## Detection tuning, first measurement — 2026-11-25
 - Frozen detector: `9db8cf8330baa499ce6b6040afc813decf348a3e`, before held-out evaluation.
 - Default-policy held-out recall increased from 4.65% to 16.28%; FPR decreased from
   1.70% to 0.44%. Extra Nazario 2025 recall increased from 1.66% to 15.18%.
@@ -86,8 +87,20 @@ Detection-quality target remains unmet: tuned held-out recall is 16.28% (see Ope
   aggregate exactly. Results and remote metadata are committed; review is in PR #12.
 - Local validation and final-head CI links are recorded in docs/evaluation.md.
 
+## PR #12 review — 2026-11-25
+- Froze the reviewed detector at `6054b917ee98e659e00b01c8d800786f6d67b635` and ran
+  the dev phase first. It caught 9/58 with 7/1,395 false positives, compared with
+  18/58 and 7/1,395 before review.
+- Ran the final phase once after review on the same held-out data. Recall moved
+  from 7/43 to 3/43 (6.98%), and false positives stayed at 6/1,355 (0.44%).
+  Recall on the reused 2025 sample moved from 73/481 to 52/481 (10.81%).
+  The four review examples are separate regression tests. The 2003 legitimate mail
+  gives limited evidence about false positives on similar notifications today.
+  [Review run](https://github.com/FLAMINGOFF/phishtriage/actions/runs/45528438262)
+  and [aggregate results](docs/public-corpus-2026-11-25-review.json).
+
 ## Open issues
-- Recall remains far below 90%: 36/43 held-out 2021 messages and 408/481 later messages
+- Recall remains far below 90%: 40/43 held-out 2021 messages and 429/481 later messages
   are missed. Many have no scoring evidence; single credential/link cues also fall
   below 40. Do not treat synthetic regression tests as real-world accuracy.
 - Need contemporary legitimate mail, campaign-aware separation, independent labels,

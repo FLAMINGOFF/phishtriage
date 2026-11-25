@@ -227,22 +227,61 @@ checksum, brand-policy and analysis-error checks. The existing rule and policy h
 are in the aggregate JSON. No weights were tuned during this evaluation; future
 improvements need a separate held-out corpus before making accuracy claims.
 
+## Second measurement after PR review — 2026-11-25
+
+Review supplied four legitimate messages about subscription activation, monthly
+statements, moving address and enabling two-factor authentication. Regression tests
+check that these examples do not trigger the 35-point credential-request rule and
+that “No fees apply” still allows a later request with a deadline to trigger it.
+Generic account and login requests now require credential, threat or deadline context.
+
+**The held-out figures below are a second measurement after review changes.** The
+first results were already known. We ran the development phase first, then the final
+phase once at `6054b917ee98e659e00b01c8d800786f6d67b635`. The final run reproduced
+the development counts. Both measurements used the same split and the same 2025 mail. [GitHub Actions run](https://github.com/FLAMINGOFF/phishtriage/actions/runs/45528438262) · [Aggregate JSON](public-corpus-2026-11-25-review.json)
+
+| Dataset | Phishing detected, first → second | False alarms, first → second | Second precision | Second recall | Second historical FPR |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Development (58 phishing, 1,395 ham) | 18 → 9 | 7 → 7 | 56.25% | 15.52% | 0.50% |
+| 2021 held-out (43 phishing, 1,355 ham) | 7 → 3 | 6 → 6 | 33.33% | 6.98% | 0.44% |
+| 2025 phishing (481 phishing only) | 73 → 52 | N/A | N/A | 10.81% | N/A |
+| 2021 held-out with the receiving mail server trusted | 7 → 3 | 6 → 6 | 33.33% | 6.98% | 0.44% |
+
+At the 40-point threshold, the revised detector caught four fewer phishing messages
+on the 2021 held-out split and 21 fewer on the 2025 corpus. Of the missed phishing
+messages, 25/40 from 2021 and 200/429 from 2025 scored zero. Four of the six held-out
+false alarms still triggered the credential-request rule. Multiple rules can fire
+on one message, so these groups overlap. The parser accepted every message and all
+analyzers completed without error.
+
+The historical false-alarm counts stayed the same. The 2003 legitimate mail lacks
+comparable authentication headers, including for the experiment that trusted the
+receiving mail server. Measuring false alarms on real subscription, account and
+security notifications requires recent labelled legitimate mail. The phishing-only
+2025 corpus supports a recall estimate only.
+
+Ruff lint and formatting, mypy and the synthetic fixture evaluation passed locally.
+The test suite passed 648 tests with 96.88% coverage. Three tests were skipped
+and three live tests were deselected.
+
 ## Detection tuning — 2026-11-25
 
-**Recall improved but remains far below the 90% target.** The untouched 2021 held-out
-split improved from 2/43 to 7/43 detections; the later 2025 corpus improved from 8/481
-to 73/481. Historical ham FPR is below 2%, but modern legitimate-mail FPR is unknown.
+### First measurement before PR review
+
+The first tuned detector found 7/43 held-out phishing messages from 2021 and 73/481
+from 2025. The baseline found 2/43 and 8/481 respectively. The first tuned detector
+flagged 0.44% of the held-out legitimate mail from 2003.
 Baseline rows were measured locally. All tuned split and authentication aggregates were
 reproduced exactly by the successful [GitHub Actions run](https://github.com/FLAMINGOFF/phishtriage/actions/runs/45526114397)
 at `9ddb82a996da2bfe540966db6559f9bf5455f47d` (Ubuntu 24.04, Python 3.12.16).
 The aggregate JSON records the remote metadata and canonical result hash.
 
-[New aggregate JSON](public-corpus-2026-11-25-detection-tuning.json) preserves baseline
+[First-measurement aggregate JSON](public-corpus-2026-11-25-detection-tuning.json) preserves baseline
 and tuned split results separately. The original `public-corpus-2026-11-25.json` is
 unchanged. Baseline application: `8ad97e0ccf0f43230c2cd73529a0867b556c827b`.
-Frozen detector: `9db8cf8330baa499ce6b6040afc813decf348a3e` (application changes in
-`7844f381da29c7727ba67e4278711ebdc2cfac87`). No detector or weight changes followed
-held-out evaluation. Later changes are evaluation tooling, tests and documentation.
+The tables and error counts below describe the detector frozen at
+`9db8cf8330baa499ce6b6040afc813decf348a3e` (application changes in
+`7844f381da29c7727ba67e4278711ebdc2cfac87`). The review changes followed this measurement.
 Local runtime: Python 3.12.15, macOS arm64, libmagic 5.48, locked dependencies.
 The original published baseline used Ubuntu/libmagic 5.45; the before/after rows below
 use the same local runtime, and their full baseline counts reproduce the published result.
@@ -295,7 +334,7 @@ leaving the frozen dev result at **18 TP / 7 FP**. The holdout was not used for 
 correction. See the explicit rule decisions in [PROGRESS.md](../PROGRESS.md#decision-log)
 and semantic limits in [scoring.md](scoring.md).
 
-### Before / after at the unchanged threshold 40
+### Baseline and first tuned measurement at threshold 40
 
 | Data | Version | TP | FN | FP | TN | Precision | Recall | Historical ham FPR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -330,7 +369,7 @@ Authentication-Results: starred precision/FPR describe the historical mix only a
 not validate authentication-related deployment false positives.** Real deployment
 requires a controlled receiving MX and representative modern ham.
 
-### Remaining errors and limits
+### Remaining errors and limits in the first measurement
 
 Counts below are overlapping rule-presence groups, not independently verified attack
 labels. No attempt was made to relabel the public corpora to improve scores.
@@ -385,8 +424,8 @@ from `8ad97e0`: create a detached worktree at that commit, copy only
 Python plus `--data-dir /absolute/path/to/data/private --phase final`. The lockfile and
 example policy hashes match. The JSON records both code references and rules hashes.
 
-Local gates passed: locked sync, Ruff lint/format, mypy, **628 tests passed** with
-96.89% coverage, and both evaluation commands. Three environment-dependent tests were
+For the first measurement, locked sync, Ruff lint/format, mypy and both evaluation
+commands passed. The test suite passed **628 tests** with 96.89% coverage. Three environment-dependent tests were
 skipped (two Compose integration tests and one PostgreSQL-only test); three live tests
 were deselected as designed. The branch is published as [PR #12](https://github.com/FLAMINGOFF/phishtriage/pull/12);
 its Checks tab tracks the final commit's CI, including Compose and PostgreSQL.

@@ -245,21 +245,15 @@ false-positive rate ≤ 5 %.
 | --- | --- | --- | --- | --- |
 | Synthetic samples (`tests/fixtures/emails/`) | 10 phishing, 5 legitimate | 100 % | 100 % | 0 % |
 | Original full-corpus baseline (default policy, offline) | 101 phishing, 2,750 legitimate | 6.25% | 2.97% | 1.64% |
-| Tuned dev split (default policy, offline) | 58 phishing, 1,395 legitimate | 72.00% | 31.03% | 0.50% |
-| Tuned held-out split (default policy, offline) | 43 phishing, 1,355 legitimate | 53.85% | 16.28% | 0.44% |
-| Extra held-out Nazario 2025 | 481 phishing, no ham | N/A | 15.18% | N/A |
+| After review, development split | 58 phishing, 1,395 legitimate | 56.25% | 15.52% | 0.50% |
+| After review, 2021 held-out split | 43 phishing, 1,355 legitimate | 33.33% | 6.98% | 0.44% |
+| After review, Nazario 2025 | 481 phishing only | N/A | 10.81% | N/A |
 
-The synthetic samples were written with the rules, so their 100 % is a regression test,
-not an estimate of real-world accuracy. The method, the commands for the public corpora
-and measured results are in [docs/evaluation.md](docs/evaluation.md).
-
-**The recall target remains unmet.** On the untouched 2021 held-out split, detection
-improved from 2/43 to 7/43 and false alarms fell from 23/1,355 to 6/1,355. On the
-later 2025 corpus, detection improved from 8/481 to 73/481; no contemporary ham was
-available to estimate its precision or FPR. Weights were selected only on dev, then
-frozen before held-out evaluation. These historical measurements, reproduced by GitHub Actions, do not establish
-production accuracy. See [the dated report and aggregate results](docs/evaluation.md#detection-tuning--2026-11-25)
-for provenance, limitations, the separate authentication experiment and reproduction.
+The held-out figures are a second measurement after review changes. On the same 2021
+split, phishing detections fell from 7/43 to 3/43. False alarms stayed at 6/1,355.
+Recall was 6.98%, below the 90% target. The 2025 corpus contains only phishing.
+Estimating today’s false-positive rate requires recent legitimate mail. The synthetic
+fixtures check for regressions. [Evaluation report and aggregate data](docs/evaluation.md#second-measurement-after-pr-review--2026-11-25).
 
 ## Limitations and roadmap
 
