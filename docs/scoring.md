@@ -57,8 +57,8 @@ Measured weights and limits: [evaluation.md](evaluation.md). The verdict thresho
 | `SENDER_NEW_DOMAIN` | sender | 15 | The sender's domain was registered less than 30 days ago. |
 | `SENDER_REPLY_TO_MISMATCH` | sender | 10 | Replies go to a different domain than the sender's. |
 | `URL_INTEL_MALICIOUS` | urls | 50, forces Malicious | Threat intelligence knows a link as malicious. |
-| `URL_CREDENTIAL_FORM` | urls | 25 | Body or attached HTML has a credential input or a form posting outside the sender organisation. |
-| `URL_TEXT_HREF_MISMATCH` | urls | 20 | A link shows another domain, excluding explicit aliases of the sender organisation. |
+| `URL_CREDENTIAL_FORM` | urls | 25 | A form asks for sign-in details or sends information to a website outside the sender's organisation. |
+| `URL_TEXT_HREF_MISMATCH` | urls | 20 | A link shows one website address but leads to a different site. |
 | `URL_IP_HOST` | urls | 15 | A link points to a bare IP address. |
 | `URL_PUNYCODE` | urls | 10 | A link host uses punycode (xn--), often to hide look-alike letters. |
 | `URL_SHORTENER` | urls | 5 | A link uses a URL shortener that hides the destination. |
@@ -68,8 +68,8 @@ Measured weights and limits: [evaluation.md](evaluation.md). The verdict thresho
 | `ATT_MACRO` | attachments | 30 | An Office document contains VBA macros. |
 | `ATT_HTML_FILE` | attachments | 20 | An HTML or SVG attachment, a common way to deliver a fake login page. |
 | `ATT_ENCRYPTED_ARCHIVE` | attachments | 20 | A password-protected archive, which scanners cannot look into. |
-| `CONTENT_CREDENTIAL_REQUEST` | content | 35 | Body or attached HTML requests credentials, login or account verification. |
-| `CONTENT_URGENCY` | content | 5 | Urgent or threatening language (counted once). |
+| `CONTENT_CREDENTIAL_REQUEST` | content | 35 | The message asks for sensitive information or pressures you to sign in or verify your account. |
+| `CONTENT_URGENCY` | content | 5 | The message uses urgent or threatening language. |
 
 Rule details that matter in practice:
 
@@ -89,11 +89,16 @@ Rule details that matter in practice:
 - **Attachments** are judged from their bytes and names only. Executables inside a ZIP
   count; nested archives are not opened. Encryption is detected for ZIP files; RAR and
   7z are not listed.
-- **Content** rules are English and Chinese keyword patterns within one sentence; a
-  preceding "never" / "不会" (as in "we will never ask for your password") cancels a
-  match. Matching text is NFKC-normalised and invisible format controls are removed;
-  evidence shows this normalised text. Passive verification requests and login requests
-  to access an invoice or document count; a document download alone does not.
+- **Content** rules look for requests in English and Chinese. A direct request to send a
+  password or verification code counts. Generic requests to confirm an email address,
+  update an account or sign in to view a document require nearby language about
+  credentials, a threat or a deadline. A routine subscription confirmation or monthly
+  statement can therefore mention signing in without adding 35 points.
+  Phrases such as “never share your password” and “no verification is required” can
+  negate a request. In “No fees apply: verify your account within 24 hours or lose
+  access”, the first clause refers to fees and the second still triggers the rule.
+  The analyzer removes invisible format controls and uses Unicode NFKC normalisation
+  before matching. Evidence shows the text used for the match.
 - **Forms** require an enabled password input, an explicit passcode/OTP/PIN field or
   password/one-time-code autocomplete, or an explicit HTTP(S) POST action outside the
   sender's organisation. Email-only subscription fields, GET searches and relative

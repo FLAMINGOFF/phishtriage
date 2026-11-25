@@ -160,15 +160,17 @@ def test_clean_links_raise_nothing(example_policy: Policy) -> None:
         "Enter your MFA code to continue.",
         "Sign in to keep your mailbox active.",
         "Open the file and sign in with your email password.",
-        "Verify your account now.",
+        "Verify your account within 24 hours.",
         "请在下方输入密码以继续使用邮箱。",
         "请确认您的账户信息。",
-        "Account verification is required to continue.",
-        "Your mail box needs to be re-verified.",
-        "Please log in to view your invoice.",
-        "Please update your email account.",
+        "No fees apply: verify your account within 24 hours or lose access.",
+        "Please log in to view your document or your account will be suspended.",
+        "No action is needed. Enter your password at the portal.",
+        "At no cost verify your account within 24 hours.",
+        "Verify your account with no password required or lose access.",
+        "No verification required\n\nVerify your account within 24 hours.",
         "Keep your pa\u2060ssword to continue.",
-        "\uff36\uff45\uff52\uff49\uff46\uff59 your account now.",
+        "\uff36\uff45\uff52\uff49\uff46\uff59 your password now.",
     ],
 )
 def test_credential_request(example_policy: Policy, text: str) -> None:
@@ -187,14 +189,44 @@ def test_credential_request(example_policy: Policy, text: str) -> None:
         "The library opens at nine.",
         "The invoice is ready to download.",
         "No account verification is required.",
+        "No account verification is required within 24 hours.",
+        "No verification required to view your invoice within 24 hours.",
+        "No action is needed to verify your account within 24 hours.",
+        "No one should ask you to provide your password.",
         "Never log in to view an unexpected invoice.",
         "Your email address was confirmed yesterday.",
         "We detected unusual sign-in activity on your account.",
+        "Account verification is required to continue.",
+        "Your mail box needs to be re-verified.",
+        "Please log in to view your invoice.",
+        "Please update your email account.",
+        "Verify your account.",
+        "Update your address; never share your password.",
+        "Log in to your account; no password is needed.",
+        "Log in to your account with no password required.",
+        "Log in to your account without a password.",
+        "Log in to view your document. The sale ends today.",
     ],
 )
 def test_no_credential_request(example_policy: Policy, text: str) -> None:
     hits = run(content.analyze, message(text=text), example_policy)
     assert "CONTENT_CREDENTIAL_REQUEST" not in hits, text
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Please confirm your email address to activate your subscription",
+        "Log in to your account to view your monthly statement",
+        "Update your address if you are moving",
+        "Please update your security settings by enabling two-factor authentication",
+    ],
+)
+def test_routine_requests_with_unrelated_urgency(example_policy: Policy, text: str) -> None:
+    raw = message(subject="Final reminder", text=text)
+    hits = run(content.analyze, raw, example_policy)
+    assert "CONTENT_URGENCY" in hits
+    assert "CONTENT_CREDENTIAL_REQUEST" not in hits
 
 
 def test_attachment_text_is_static_and_bounded(example_policy: Policy) -> None:

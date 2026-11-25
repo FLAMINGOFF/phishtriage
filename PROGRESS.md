@@ -98,6 +98,14 @@ Detection-quality target remains unmet: tuned held-out recall is 16.28% (see Ope
   trigger false positives. Authentication FPR needs modern ham through a trusted MX.
 
 ## Decision log
+- PR #12 review: keep the 35-point credential weight, but require credentials, an
+  access threat or a deadline in the same clause as a generic English account or
+  sign-in request. A routine subscription, statement, address change or two-factor
+  setup can otherwise combine with a 5-point signal to reach the suspicious threshold.
+- PR #12 review: recognise targeted reassurances such as “no action is needed” and
+  “no account verification is required”, plus advice such as “no one should ask”.
+  A bare “no” cannot cancel a later request: “No fees apply: verify your account
+  within 24 hours or lose access” must still raise the credential finding.
 - Detection tuning: split raw message SHA-256 first nibble < 8 into development;
   reserve the other half and all Nazario 2025 messages before inspecting errors.
   No corpus identifiers, recipient identities, dates or mailing-list markers score.

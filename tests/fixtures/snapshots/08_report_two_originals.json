@@ -67,7 +67,7 @@
       "findings": [
         {
           "analyzer": "content",
-          "description": "Body or attached HTML requests credentials, login or account verification (normalised text).",
+          "description": "The message asks for sensitive information or pressures you to sign in or verify your account.",
           "evidence": [
             {
               "field": "Body",

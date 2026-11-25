@@ -61,11 +61,11 @@ rules:
   URL_CREDENTIAL_FORM:
     analyzer: urls
     score: 25
-    description: Body or attached HTML has a credential input or a form posting outside the sender organisation.
+    description: A form asks for sign-in details or sends information to a website outside the sender's organisation.
   URL_TEXT_HREF_MISMATCH:
     analyzer: urls
     score: 20
-    description: A link shows another domain, excluding explicit aliases of the sender organisation.
+    description: A link shows one website address but leads to a different site.
   URL_IP_HOST:
     analyzer: urls
     score: 15
@@ -108,8 +108,8 @@ rules:
   CONTENT_CREDENTIAL_REQUEST:
     analyzer: content
     score: 35
-    description: Body or attached HTML requests credentials, login or account verification (normalised text).
+    description: The message asks for sensitive information or pressures you to sign in or verify your account.
   CONTENT_URGENCY:
     analyzer: content
     score: 5
-    description: Urgent or threatening language in normalised body or attached HTML (counted once).
+    description: The message uses urgent or threatening language.

@@ -18,12 +18,12 @@
       "findings": [
         {
           "analyzer": "content",
-          "description": "Body or attached HTML requests credentials, login or account verification (normalised text).",
+          "description": "The message asks for sensitive information or pressures you to sign in or verify your account.",
           "evidence": [
             {
               "field": "HTML body",
               "match": "Sign in to keep",
-              "value": "ar student, Your mailbox is over quota. Sign in to keep receiving mail: hxxps://www[.]example[.]edu"
+              "value": "ar student, Your mailbox is over quota. Sign in to keep receiving mail: hxxps://www[.]example[.]edu/account Exampl"
             }
           ],
           "rule_id": "CONTENT_CREDENTIAL_REQUEST",
@@ -44,7 +44,7 @@
         },
         {
           "analyzer": "urls",
-          "description": "Body or attached HTML has a credential input or a form posting outside the sender organisation.",
+          "description": "A form asks for sign-in details or sends information to a website outside the sender's organisation.",
           "evidence": [
             {
               "field": "HTML body",
@@ -62,7 +62,7 @@
         },
         {
           "analyzer": "urls",
-          "description": "A link shows another domain, excluding explicit aliases of the sender organisation.",
+          "description": "A link shows one website address but leads to a different site.",
           "evidence": [
             {
               "field": "HTML link",
