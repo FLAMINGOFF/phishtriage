@@ -1,0 +1,102 @@
+name: Public corpus evaluation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/public-corpus.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install locked dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libmagic1
+          pip install uv==0.11.32
+          uv sync --locked
+      - name: Verify evaluation regression tests
+        run: uv run pytest tests/unit/test_evaluate.py tests/unit/test_verdicts.py
+      - name: Download checksum-pinned public corpora
+        run: |
+          curl --fail --location --retry 3 --max-time 180 https://monkey.org/~jose/phishing/phishing-2021 -o data/private/nazario-phishing-2021.mbox
+          curl --fail --location --retry 3 --max-time 180 https://spamassassin.apache.org/old/publiccorpus/20030228_easy_ham.tar.bz2 -o data/private/easy_ham.tar.bz2
+          curl --fail --location --retry 3 --max-time 180 https://spamassassin.apache.org/old/publiccorpus/20030228_hard_ham.tar.bz2 -o data/private/hard_ham.tar.bz2
+          sha256sum --check <<'CHECKSUMS'
+          636707cff42245d1482e4ae8a2c03369717a5e06bf9d1a0f4ec5dcd846661cee  data/private/nazario-phishing-2021.mbox
+          2b7b65904bcfcc31d2b5f51946f2d261370b257402cbbd62930b46ab83367438  data/private/easy_ham.tar.bz2
+          ce2ce67880643dbde65ea7f85bffbfe4417349c4bd80b6b0de56262ae6b0a9c9  data/private/hard_ham.tar.bz2
+          CHECKSUMS
+          tar -xjf data/private/easy_ham.tar.bz2 -C data/private
+          tar -xjf data/private/hard_ham.tar.bz2 -C data/private
+      - name: Evaluate offline and publish aggregate metrics only
+        run: |
+          uv run python - <<'PY'
+          import collections
+          import hashlib
+          import json
+          import os
+          import sys
+          from pathlib import Path
+          from scripts import evaluate as ev
+
+          def offline(event, args):
+              if event in {'socket.connect', 'socket.getaddrinfo'}:
+                  raise RuntimeError('Network access forbidden during evaluation')
+          sys.addaudithook(offline)
+          original = ev.analyze_email
+          failures = collections.Counter()
+          def checked(*args, **kwargs):
+              result = original(*args, **kwargs)
+              failures.update(result.errors.keys())
+              return result
+          ev.analyze_email = checked
+          phish = list(ev.load([Path('data/private/nazario-phishing-2021.mbox')], 'phish'))
+          ham = list(ev.load([Path('data/private/easy_ham'), Path('data/private/hard_ham')], 'ham'))
+          fingerprints = lambda samples: {hashlib.sha256(s.raw).hexdigest() for s in samples}
+          assert len(phish) == 101 and len(ham) == 2750
+          metadata = {
+              'commit': os.environ['GITHUB_SHA'],
+              'python': sys.version.split()[0],
+              'source_counts': {'phish': len(phish), 'ham': len(ham)},
+              'unique_raw_messages': {'phish': len(fingerprints(phish)), 'ham': len(fingerprints(ham))},
+              'cross_class_duplicates': len(fingerprints(phish) & fingerprints(ham)),
+              'policy_sha256': hashlib.sha256(ev.EXAMPLE_SETTINGS_FILE.read_bytes()).hexdigest(),
+              'rules_sha256': hashlib.sha256(ev.RULES_FILE.read_bytes()).hexdigest(),
+          }
+          summaries = ['# Public corpus evaluation', '', 'Nazario 2021 (101 phishing) and SpamAssassin 20030228 (2,750 ham).', '', 'Offline static analysis; no threat-intelligence calls. Historical data, not deployment accuracy.']
+          results = {'metadata': metadata, 'runs': {}}
+          for name in ('default', 'brands'):
+              data = ev.load_policy_data(ev.EXAMPLE_SETTINGS_FILE)
+              if name == 'brands':
+                  data['protected_domains'] += ['microsoft.com', 'paypal.com', 'apple.com', 'amazon.com']
+                  data['protected_names'] += ['Microsoft', 'PayPal', 'Apple', 'Amazon']
+              report = ev.evaluate(phish + ham, ev.Policy.model_validate(data))
+              results['runs'][name] = {
+                  'metrics': report.metrics(),
+                  'rejected': len(report.rejected),
+                  'confusion': {label: dict(counts) for label, counts in report.confusion().items()},
+                  'sweep': {str(t): report.metrics(t) for t in ev.SWEEP},
+                  'rule_rates': report.rule_rates(),
+                  'false_negative_rule_counts': dict(collections.Counter(r for o in report.by_label('phish') if o.verdict not in ev.POSITIVE for r in o.rules)),
+                  'false_positive_rule_counts': dict(collections.Counter(r for o in report.by_label('ham') if o.verdict in ev.POSITIVE for r in o.rules)),
+              }
+              summaries += ['', '## ' + name, '', ev.render_markdown(report)]
+          results['analysis_errors'] = dict(failures)
+          assert not failures, 'Partial analysis must be investigated before reporting results'
+          print('AGGREGATE_RESULTS_BEGIN')
+          print(json.dumps(results, sort_keys=True))
+          print('AGGREGATE_RESULTS_END')
+          Path(os.environ['GITHUB_STEP_SUMMARY']).write_text('\n'.join(summaries) + '\n')
+          PY
