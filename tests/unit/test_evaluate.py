@@ -95,6 +95,8 @@ def test_corpus_run_markdown_and_json(tmp_path: Path, capsys) -> None:
             "--ham",
             str(ham),
             "--markdown",
+            "--show-errors",
+            "1",
             "--json",
             str(out_json),
             "--trust-authserv",
@@ -106,6 +108,8 @@ def test_corpus_run_markdown_and_json(tmp_path: Path, capsys) -> None:
     assert markdown.startswith("| Emails | Precision | Recall |")
     assert "| Phishing |" in markdown
     assert "`CONTENT_CREDENTIAL_REQUEST`" in markdown
+    assert "missed phishing (first 1)" in markdown
+    assert "false alarms (first 1)" in markdown
     payload = json.loads(out_json.read_text())
     assert payload["metrics"]["phish"] == 1
     assert payload["metrics"]["ham"] == 1

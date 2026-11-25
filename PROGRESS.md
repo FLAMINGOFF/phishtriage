@@ -2,7 +2,7 @@
 
 ## Current milestone
 M0–M6 implementation complete (v1.0.0). Releases and public-corpus baseline are published.
-Detection-quality target remains unmet: public-corpus recall is 2.97% (see Open issues).
+Detection-quality target remains unmet: tuned held-out recall is 16.28% (see Open issues).
 
 ## Done
 - M0 – Skeleton: uv project, ruff/mypy/pytest/pre-commit, settings loader (.env +
@@ -76,14 +76,24 @@ Detection-quality target remains unmet: public-corpus recall is 2.97% (see Open 
   The 21 evaluation/verdict tests passed; no rejected messages or analysis errors.
   Results, limitations and reproducible workflow are in `docs/evaluation.md`.
 
+## Detection tuning — 2026-11-25
+- Frozen detector: `9db8cf8330baa499ce6b6040afc813decf348a3e`, before held-out evaluation.
+- Default-policy held-out recall increased from 4.65% to 16.28%; FPR decreased from
+  1.70% to 0.44%. Extra Nazario 2025 recall increased from 1.66% to 15.18%.
+- Preserve the original full-corpus JSON. Add a separate aggregate result file with
+  baseline/tuned split metrics, corpus hashes and an authentication sensitivity row.
+- Local validation and branch publication status are recorded in docs/evaluation.md.
+
 ## Open issues
-- Detection quality needs substantial improvement: at threshold 40, both policies
-  detect 3/101 phishing messages (2.97% recall), below the 90% target. Default-policy
-  precision is 6.25%, false-positive rate 1.64%. Do not treat passing synthetic tests
-  or a successful workflow as real-world detection validation.
-- Review broad HTML form/link-mismatch heuristics and missing phishing signals, then
-  evaluate changes on separate development and held-out, contemporary corpora with
-  organisation-specific policy and separately measured threat intelligence.
+- Recall remains far below 90%: 36/43 held-out 2021 messages and 408/481 later messages
+  are missed. Many have no scoring evidence; single credential/link cues also fall
+  below 40. Do not treat synthetic regression tests as real-world accuracy.
+- Need contemporary legitimate mail, campaign-aware separation, independent labels,
+  broader language/attachment coverage and organisation-specific policy. Plain file
+  sharing, callback scams and obfuscated lures remain weakly covered; no unsafe link
+  fetching or attachment execution was added to compensate.
+- Unknown third-party POST/tracking services and legitimate login requests can still
+  trigger false positives. Authentication FPR needs modern ham through a trusted MX.
 
 ## Decision log
 - Detection tuning: split raw message SHA-256 first nibble < 8 into development;

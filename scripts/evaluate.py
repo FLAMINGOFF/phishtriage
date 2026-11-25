@@ -10,7 +10,8 @@ in the SpamAssassin corpus) per message, or ``mbox`` files (as in Jose Nazario's
 corpus). Every message is analysed the way the worker analyses a reported original, but
 offline: no intel lookups, nothing leaves the machine, attachments are only inspected
 statically. Rules that need intel (``*_INTEL_MALICIOUS``, ``SENDER_NEW_DOMAIN``) therefore
-never fire here, so the numbers are a lower bound for a deployment with keys.
+never fire here. These figures measure offline heuristics, not deployment accuracy;
+the effect of threat intelligence needs separate validation on both classes.
 
 "Positive" means malicious or suspicious (the plan's definition): those are the verdicts
 that tell the reporter it is phishing. Real emails stay in ``data/private/`` (git-ignored)
@@ -246,14 +247,7 @@ def render_text(report: Report, show_errors: int) -> str:
     lines += ["", "rules (hits in phishing / legitimate)"]
     for rule, hp, hh, sp, sh in report.rule_rates():
         lines.append(f"  {rule:34} {hp:>5} ({_pct(sp):>6})  {hh:>5} ({_pct(sh):>6})")
-    if show_errors:
-        misses = [o for o in report.by_label("phish") if o.verdict not in POSITIVE]
-        alarms = [o for o in report.by_label("ham") if o.verdict in POSITIVE]
-        for title, items in (("missed phishing", misses), ("false alarms", alarms)):
-            lines += ["", f"{title} (first {show_errors})"]
-            for o in items[:show_errors]:
-                verdict = o.verdict.value if o.verdict else "rejected"
-                lines.append(f"  {o.sample.source}: {verdict} {o.score} {','.join(o.rules)}")
+    lines.extend(render_errors(report, show_errors))
     mismatches = report.fixture_mismatches()
     if mismatches:
         lines += ["", "fixtures with an unexpected verdict"]
@@ -262,6 +256,21 @@ def render_text(report: Report, show_errors: int) -> str:
             want = o.sample.expected.value if o.sample.expected else "?"
             lines.append(f"  {o.sample.source}: expected {want}, got {got}")
     return "\n".join(lines)
+
+
+def render_errors(report: Report, limit: int) -> list[str]:
+    """Local-only diagnostics, explicitly requested; never used by the public workflow."""
+    lines: list[str] = []
+    if limit <= 0:
+        return lines
+    misses = [o for o in report.by_label("phish") if o.verdict not in POSITIVE]
+    alarms = [o for o in report.by_label("ham") if o.verdict in POSITIVE]
+    for title, items in (("missed phishing", misses), ("false alarms", alarms)):
+        lines += ["", f"{title} (first {limit})"]
+        for o in items[:limit]:
+            verdict = o.verdict.value if o.verdict else "rejected"
+            lines.append(f"  {o.sample.source}: {verdict} {o.score} {','.join(o.rules)}")
+    return lines
 
 
 def render_markdown(report: Report) -> str:
@@ -333,6 +342,8 @@ def main(argv: list[str] | None = None) -> int:
     report = evaluate(samples, policy, args.rules)
 
     print(render_markdown(report) if args.markdown else render_text(report, args.show_errors))
+    if args.markdown and args.show_errors:
+        print("\n".join(render_errors(report, args.show_errors)))
     if args.json:
         payload = {
             "metrics": report.metrics(),
