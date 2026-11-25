@@ -1,0 +1,565 @@
+{
+  "authentication": {
+    "messages_by_authserv_id": {
+      "contentcreationnepal.com": 1,
+      "imf01.b.hostedemail.com": 2,
+      "imf02.b.hostedemail.com": 1,
+      "imf03.b.hostedemail.com": 1,
+      "imf04.b.hostedemail.com": 1,
+      "imf05.b.hostedemail.com": 3,
+      "imf06.b.hostedemail.com": 4,
+      "imf07.b.hostedemail.com": 3,
+      "imf08.b.hostedemail.com": 3,
+      "imf10.b.hostedemail.com": 2,
+      "imf11.b.hostedemail.com": 6,
+      "imf12.b.hostedemail.com": 1,
+      "imf13.b.hostedemail.com": 3,
+      "imf14.b.hostedemail.com": 2,
+      "imf15.b.hostedemail.com": 2,
+      "imf16.b.hostedemail.com": 5,
+      "imf17.b.hostedemail.com": 1,
+      "imf18.b.hostedemail.com": 1,
+      "imf19.b.hostedemail.com": 1,
+      "imf20.b.hostedemail.com": 3,
+      "imf21.b.hostedemail.com": 3,
+      "imf22.b.hostedemail.com": 3,
+      "imf23.b.hostedemail.com": 1,
+      "imf24.b.hostedemail.com": 2,
+      "imf25.b.hostedemail.com": 2,
+      "imf26.b.hostedemail.com": 3,
+      "imf27.b.hostedemail.com": 1,
+      "imf28.b.hostedemail.com": 1,
+      "imf29.b.hostedemail.com": 4,
+      "imf30.b.hostedemail.com": 3,
+      "servconfig.com": 1
+    },
+    "selected_id": "imf11.b.hostedemail.com"
+  },
+  "measurement": {
+    "local_dev_matches_remote": true,
+    "number": 3,
+    "prior_detector_commit": "6054b917ee98e659e00b01c8d800786f6d67b635",
+    "reason": "Follow-up to PR #12 using the same previously measured held-out corpora.",
+    "workflow_run_url": "https://github.com/FLAMINGOFF/phishtriage/actions/runs/45529879963"
+  },
+  "metadata": {
+    "commit": "7d02e51abfea7c5e8e9a98691a16fc1d264fce04",
+    "corpora": {
+      "easy_ham.tar.bz2": {
+        "count": 2500,
+        "sha256": "2b7b65904bcfcc31d2b5f51946f2d261370b257402cbbd62930b46ab83367438",
+        "url": "https://spamassassin.apache.org/old/publiccorpus/20030228_easy_ham.tar.bz2"
+      },
+      "hard_ham.tar.bz2": {
+        "count": 250,
+        "sha256": "ce2ce67880643dbde65ea7f85bffbfe4417349c4bd80b6b0de56262ae6b0a9c9",
+        "url": "https://spamassassin.apache.org/old/publiccorpus/20030228_hard_ham.tar.bz2"
+      },
+      "nazario-phishing-2021.mbox": {
+        "count": 101,
+        "sha256": "636707cff42245d1482e4ae8a2c03369717a5e06bf9d1a0f4ec5dcd846661cee",
+        "url": "https://monkey.org/~jose/phishing/phishing-2021"
+      },
+      "nazario-phishing-2025.mbox": {
+        "count": 481,
+        "sha256": "f1fa7e0fe35c9a16f36d9aa20ade7e1d3908d1d0c1d917b8c53c8aa799ec1c8f",
+        "url": "https://monkey.org/~jose/phishing/phishing-2025"
+      }
+    },
+    "cross_class_duplicates": 0,
+    "extra_overlap_with_2021": 0,
+    "extra_unique_raw_messages": 481,
+    "lock_sha256": "71c1665c09858daa056ab929cf7a6c79b2a370da880c1e9e17f2192a78026cb6",
+    "manifest_sha256": "1ec75c4d10ebb37b2a68a46fd5a71a759a011c192baa9c523d727bee1a039ff7",
+    "near_duplicate_deduplication": false,
+    "phase": "final",
+    "platform": "Linux-7.0.0-1014-aws-x86_64-with-glibc2.39",
+    "policy_sha256": "49c21767681a3f2f056c60fe746c632c2b71abb955d8ca80164ca90a4d3b086e",
+    "python": "3.12.16",
+    "rules_sha256": "35b7488802918145d46a70a61888df3a28f48a5619686b70cedb463ba318ab4f",
+    "split": "sha256(raw_message)[0] < 8 hexadecimal => dev; otherwise heldout",
+    "split_counts": {
+      "dev": {
+        "ham": 1395,
+        "phish": 58
+      },
+      "heldout": {
+        "ham": 1355,
+        "phish": 43
+      }
+    },
+    "unique_raw_messages": {
+      "ham": 2750,
+      "phish": 101
+    }
+  },
+  "runs": {
+    "deployment_like_heldout": {
+      "analysis_errors": {},
+      "caveat": "Deployment-like sensitivity only: historical ham lacks comparable trusted authentication; FPR is not validated.",
+      "confusion": {
+        "ham": {
+          "low_risk": 64,
+          "malicious": 1,
+          "no_issues": 1285,
+          "suspicious": 5
+        },
+        "phish": {
+          "low_risk": 13,
+          "malicious": 1,
+          "no_issues": 27,
+          "suspicious": 2
+        }
+      },
+      "false_negative_rule_counts": {
+        "ATT_HTML_FILE": 1,
+        "AUTH_NO_TRUSTED_RESULTS": 37,
+        "CONTENT_CREDENTIAL_REQUEST": 1,
+        "CONTENT_URGENCY": 3,
+        "SENDER_REPLY_TO_MISMATCH": 1,
+        "URL_CREDENTIAL_FORM": 2,
+        "URL_TEXT_HREF_MISMATCH": 9
+      },
+      "false_positive_rule_counts": {
+        "AUTH_NO_TRUSTED_RESULTS": 6,
+        "CONTENT_CREDENTIAL_REQUEST": 4,
+        "CONTENT_URGENCY": 1,
+        "SENDER_REPLY_TO_MISMATCH": 3,
+        "URL_CREDENTIAL_FORM": 3,
+        "URL_IP_HOST": 1,
+        "URL_SHORTENER": 2,
+        "URL_TEXT_HREF_MISMATCH": 1
+      },
+      "metrics": {
+        "f1": 0.11538461538461539,
+        "false_positive_rate": 0.004428044280442804,
+        "fn": 40,
+        "fp": 6,
+        "ham": 1355,
+        "phish": 43,
+        "precision": 0.3333333333333333,
+        "recall": 0.06976744186046512,
+        "tn": 1349,
+        "tp": 3
+      },
+      "misses_with_zero_score": 25,
+      "rejected": 0,
+      "rule_rates": [
+        [
+          "AUTH_NO_TRUSTED_RESULTS",
+          40,
+          1284,
+          0.9302325581395349,
+          0.9476014760147602
+        ],
+        [
+          "SENDER_REPLY_TO_MISMATCH",
+          1,
+          255,
+          0.023255813953488372,
+          0.1881918819188192
+        ],
+        [
+          "URL_TEXT_HREF_MISMATCH",
+          9,
+          43,
+          0.20930232558139536,
+          0.03173431734317343
+        ],
+        [
+          "CONTENT_URGENCY",
+          5,
+          33,
+          0.11627906976744186,
+          0.024354243542435424
+        ],
+        [
+          "URL_CREDENTIAL_FORM",
+          4,
+          14,
+          0.09302325581395349,
+          0.010332103321033211
+        ],
+        [
+          "CONTENT_CREDENTIAL_REQUEST",
+          3,
+          4,
+          0.06976744186046512,
+          0.002952029520295203
+        ],
+        [
+          "ATT_HTML_FILE",
+          3,
+          0,
+          0.06976744186046512,
+          0.0
+        ],
+        [
+          "URL_IP_HOST",
+          0,
+          2,
+          0.0,
+          0.0014760147601476014
+        ],
+        [
+          "URL_SHORTENER",
+          0,
+          2,
+          0.0,
+          0.0014760147601476014
+        ]
+      ]
+    },
+    "dev": {
+      "analysis_errors": {},
+      "confusion": {
+        "ham": {
+          "low_risk": 52,
+          "no_issues": 1336,
+          "suspicious": 7
+        },
+        "phish": {
+          "low_risk": 17,
+          "malicious": 5,
+          "no_issues": 32,
+          "suspicious": 4
+        }
+      },
+      "false_negative_rule_counts": {
+        "AUTH_NO_TRUSTED_RESULTS": 47,
+        "CONTENT_CREDENTIAL_REQUEST": 3,
+        "CONTENT_URGENCY": 6,
+        "SENDER_REPLY_TO_MISMATCH": 2,
+        "URL_SHORTENER": 2,
+        "URL_TEXT_HREF_MISMATCH": 13
+      },
+      "false_positive_rule_counts": {
+        "ATT_EXECUTABLE": 1,
+        "AUTH_NO_TRUSTED_RESULTS": 7,
+        "CONTENT_CREDENTIAL_REQUEST": 1,
+        "SENDER_REPLY_TO_MISMATCH": 3,
+        "URL_CREDENTIAL_FORM": 5,
+        "URL_SHORTENER": 3,
+        "URL_TEXT_HREF_MISMATCH": 4
+      },
+      "metrics": {
+        "f1": 0.24324324324324326,
+        "false_positive_rate": 0.005017921146953405,
+        "fn": 49,
+        "fp": 7,
+        "ham": 1395,
+        "phish": 58,
+        "precision": 0.5625,
+        "recall": 0.15517241379310345,
+        "tn": 1388,
+        "tp": 9
+      },
+      "misses_with_zero_score": 25,
+      "rejected": 0,
+      "rule_rates": [
+        [
+          "AUTH_NO_TRUSTED_RESULTS",
+          56,
+          1316,
+          0.9655172413793104,
+          0.9433691756272401
+        ],
+        [
+          "SENDER_REPLY_TO_MISMATCH",
+          3,
+          247,
+          0.05172413793103448,
+          0.1770609318996416
+        ],
+        [
+          "CONTENT_URGENCY",
+          10,
+          44,
+          0.1724137931034483,
+          0.031541218637992835
+        ],
+        [
+          "URL_TEXT_HREF_MISMATCH",
+          14,
+          37,
+          0.2413793103448276,
+          0.026523297491039426
+        ],
+        [
+          "URL_CREDENTIAL_FORM",
+          7,
+          11,
+          0.1206896551724138,
+          0.007885304659498209
+        ],
+        [
+          "CONTENT_CREDENTIAL_REQUEST",
+          10,
+          2,
+          0.1724137931034483,
+          0.0014336917562724014
+        ],
+        [
+          "ATT_HTML_FILE",
+          7,
+          0,
+          0.1206896551724138,
+          0.0
+        ],
+        [
+          "URL_SHORTENER",
+          2,
+          3,
+          0.034482758620689655,
+          0.002150537634408602
+        ],
+        [
+          "URL_IP_HOST",
+          0,
+          3,
+          0.0,
+          0.002150537634408602
+        ],
+        [
+          "ATT_EXECUTABLE",
+          0,
+          1,
+          0.0,
+          0.0007168458781362007
+        ]
+      ]
+    },
+    "extra_2025": {
+      "analysis_errors": {},
+      "confusion": {
+        "ham": {},
+        "phish": {
+          "low_risk": 85,
+          "malicious": 9,
+          "no_issues": 343,
+          "suspicious": 44
+        }
+      },
+      "false_negative_rule_counts": {
+        "ATT_EXT_MISMATCH": 1,
+        "ATT_HTML_FILE": 10,
+        "AUTH_NO_TRUSTED_RESULTS": 424,
+        "CONTENT_CREDENTIAL_REQUEST": 34,
+        "CONTENT_URGENCY": 149,
+        "SENDER_REPLY_TO_MISMATCH": 21,
+        "URL_PUNYCODE": 1,
+        "URL_SHORTENER": 10,
+        "URL_TEXT_HREF_MISMATCH": 30
+      },
+      "false_positive_rule_counts": {},
+      "metrics": {
+        "f1": null,
+        "false_positive_rate": null,
+        "fn": 428,
+        "fp": 0,
+        "ham": 0,
+        "phish": 481,
+        "precision": null,
+        "recall": 0.1101871101871102,
+        "tn": 0,
+        "tp": 53
+      },
+      "misses_with_zero_score": 200,
+      "rejected": 0,
+      "rule_rates": [
+        [
+          "AUTH_NO_TRUSTED_RESULTS",
+          477,
+          0,
+          0.9916839916839917,
+          0.0
+        ],
+        [
+          "CONTENT_URGENCY",
+          188,
+          0,
+          0.3908523908523909,
+          0.0
+        ],
+        [
+          "CONTENT_CREDENTIAL_REQUEST",
+          83,
+          0,
+          0.17255717255717257,
+          0.0
+        ],
+        [
+          "URL_TEXT_HREF_MISMATCH",
+          36,
+          0,
+          0.07484407484407485,
+          0.0
+        ],
+        [
+          "SENDER_REPLY_TO_MISMATCH",
+          30,
+          0,
+          0.062370062370062374,
+          0.0
+        ],
+        [
+          "ATT_HTML_FILE",
+          21,
+          0,
+          0.04365904365904366,
+          0.0
+        ],
+        [
+          "URL_CREDENTIAL_FORM",
+          11,
+          0,
+          0.02286902286902287,
+          0.0
+        ],
+        [
+          "URL_SHORTENER",
+          11,
+          0,
+          0.02286902286902287,
+          0.0
+        ],
+        [
+          "ATT_EXECUTABLE",
+          2,
+          0,
+          0.004158004158004158,
+          0.0
+        ],
+        [
+          "URL_PUNYCODE",
+          2,
+          0,
+          0.004158004158004158,
+          0.0
+        ],
+        [
+          "ATT_EXT_MISMATCH",
+          1,
+          0,
+          0.002079002079002079,
+          0.0
+        ]
+      ]
+    },
+    "heldout": {
+      "analysis_errors": {},
+      "confusion": {
+        "ham": {
+          "low_risk": 64,
+          "malicious": 1,
+          "no_issues": 1285,
+          "suspicious": 5
+        },
+        "phish": {
+          "low_risk": 13,
+          "malicious": 1,
+          "no_issues": 27,
+          "suspicious": 2
+        }
+      },
+      "false_negative_rule_counts": {
+        "ATT_HTML_FILE": 1,
+        "AUTH_NO_TRUSTED_RESULTS": 40,
+        "CONTENT_CREDENTIAL_REQUEST": 1,
+        "CONTENT_URGENCY": 3,
+        "SENDER_REPLY_TO_MISMATCH": 1,
+        "URL_CREDENTIAL_FORM": 2,
+        "URL_TEXT_HREF_MISMATCH": 9
+      },
+      "false_positive_rule_counts": {
+        "AUTH_NO_TRUSTED_RESULTS": 6,
+        "CONTENT_CREDENTIAL_REQUEST": 4,
+        "CONTENT_URGENCY": 1,
+        "SENDER_REPLY_TO_MISMATCH": 3,
+        "URL_CREDENTIAL_FORM": 3,
+        "URL_IP_HOST": 1,
+        "URL_SHORTENER": 2,
+        "URL_TEXT_HREF_MISMATCH": 1
+      },
+      "metrics": {
+        "f1": 0.11538461538461539,
+        "false_positive_rate": 0.004428044280442804,
+        "fn": 40,
+        "fp": 6,
+        "ham": 1355,
+        "phish": 43,
+        "precision": 0.3333333333333333,
+        "recall": 0.06976744186046512,
+        "tn": 1349,
+        "tp": 3
+      },
+      "misses_with_zero_score": 25,
+      "rejected": 0,
+      "rule_rates": [
+        [
+          "AUTH_NO_TRUSTED_RESULTS",
+          43,
+          1284,
+          1.0,
+          0.9476014760147602
+        ],
+        [
+          "SENDER_REPLY_TO_MISMATCH",
+          1,
+          255,
+          0.023255813953488372,
+          0.1881918819188192
+        ],
+        [
+          "URL_TEXT_HREF_MISMATCH",
+          9,
+          43,
+          0.20930232558139536,
+          0.03173431734317343
+        ],
+        [
+          "CONTENT_URGENCY",
+          5,
+          33,
+          0.11627906976744186,
+          0.024354243542435424
+        ],
+        [
+          "URL_CREDENTIAL_FORM",
+          4,
+          14,
+          0.09302325581395349,
+          0.010332103321033211
+        ],
+        [
+          "CONTENT_CREDENTIAL_REQUEST",
+          3,
+          4,
+          0.06976744186046512,
+          0.002952029520295203
+        ],
+        [
+          "ATT_HTML_FILE",
+          3,
+          0,
+          0.06976744186046512,
+          0.0
+        ],
+        [
+          "URL_IP_HOST",
+          0,
+          2,
+          0.0,
+          0.0014760147601476014
+        ],
+        [
+          "URL_SHORTENER",
+          0,
+          2,
+          0.0,
+          0.0014760147601476014
+        ]
+      ]
+    }
+  }
+}
