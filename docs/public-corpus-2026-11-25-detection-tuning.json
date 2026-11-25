@@ -544,7 +544,7 @@
     }
   },
   "date": "2026-11-25",
-  "execution": "local; GitHub Actions confirmation pending",
+  "execution": "Local baseline and tuned runs; tuned aggregates reproduced exactly on GitHub Actions.",
   "frozen_detector_commit": "9db8cf8330baa499ce6b6040afc813decf348a3e",
   "full_2021_quality_gate": {
     "confusion": {
@@ -672,6 +672,64 @@
         "tp": 9
       }
     }
+  },
+  "github_actions_confirmation": {
+    "all_run_aggregates_equal_local": true,
+    "authentication_aggregates_equal_local": true,
+    "canonical_runs_sha256": "a7da8309bc3ec89bf7230b74a619822e35691efb6dfe088491f2abc7662df4ac",
+    "conclusion": "success",
+    "metadata": {
+      "commit": "9ddb82a996da2bfe540966db6559f9bf5455f47d",
+      "corpora": {
+        "easy_ham.tar.bz2": {
+          "count": 2500,
+          "sha256": "2b7b65904bcfcc31d2b5f51946f2d261370b257402cbbd62930b46ab83367438",
+          "url": "https://spamassassin.apache.org/old/publiccorpus/20030228_easy_ham.tar.bz2"
+        },
+        "hard_ham.tar.bz2": {
+          "count": 250,
+          "sha256": "ce2ce67880643dbde65ea7f85bffbfe4417349c4bd80b6b0de56262ae6b0a9c9",
+          "url": "https://spamassassin.apache.org/old/publiccorpus/20030228_hard_ham.tar.bz2"
+        },
+        "nazario-phishing-2021.mbox": {
+          "count": 101,
+          "sha256": "636707cff42245d1482e4ae8a2c03369717a5e06bf9d1a0f4ec5dcd846661cee",
+          "url": "https://monkey.org/~jose/phishing/phishing-2021"
+        },
+        "nazario-phishing-2025.mbox": {
+          "count": 481,
+          "sha256": "f1fa7e0fe35c9a16f36d9aa20ade7e1d3908d1d0c1d917b8c53c8aa799ec1c8f",
+          "url": "https://monkey.org/~jose/phishing/phishing-2025"
+        }
+      },
+      "cross_class_duplicates": 0,
+      "extra_overlap_with_2021": 0,
+      "extra_unique_raw_messages": 481,
+      "lock_sha256": "71c1665c09858daa056ab929cf7a6c79b2a370da880c1e9e17f2192a78026cb6",
+      "manifest_sha256": "1ec75c4d10ebb37b2a68a46fd5a71a759a011c192baa9c523d727bee1a039ff7",
+      "near_duplicate_deduplication": false,
+      "phase": "final",
+      "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+      "policy_sha256": "49c21767681a3f2f056c60fe746c632c2b71abb955d8ca80164ca90a4d3b086e",
+      "python": "3.12.16",
+      "rules_sha256": "ef7697db43aa3f5d1923bd38aafe619e9bc2f72b5b09e9d5edae1d0af26b9278",
+      "split": "sha256(raw_message)[0] < 8 hexadecimal => dev; otherwise heldout",
+      "split_counts": {
+        "dev": {
+          "ham": 1395,
+          "phish": 58
+        },
+        "heldout": {
+          "ham": 1355,
+          "phish": 43
+        }
+      },
+      "unique_raw_messages": {
+        "ham": 2750,
+        "phish": 101
+      }
+    },
+    "run_url": "https://github.com/FLAMINGOFF/phishtriage/actions/runs/45526114397"
   },
   "tuned": {
     "authentication": {

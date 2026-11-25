@@ -82,7 +82,9 @@ Detection-quality target remains unmet: tuned held-out recall is 16.28% (see Ope
   1.70% to 0.44%. Extra Nazario 2025 recall increased from 1.66% to 15.18%.
 - Preserve the original full-corpus JSON. Add a separate aggregate result file with
   baseline/tuned split metrics, corpus hashes and an authentication sensitivity row.
-- Local validation and branch publication status are recorded in docs/evaluation.md.
+- Public-corpus Actions run `45526114397` reproduced every tuned split/authentication
+  aggregate exactly. Results and remote metadata are committed; review is in PR #12.
+- Local validation and final-head CI links are recorded in docs/evaluation.md.
 
 ## Open issues
 - Recall remains far below 90%: 36/43 held-out 2021 messages and 408/481 later messages

@@ -232,7 +232,10 @@ improvements need a separate held-out corpus before making accuracy claims.
 **Recall improved but remains far below the 90% target.** The untouched 2021 held-out
 split improved from 2/43 to 7/43 detections; the later 2025 corpus improved from 8/481
 to 73/481. Historical ham FPR is below 2%, but modern legitimate-mail FPR is unknown.
-These are local measurements; GitHub Actions confirmation is pending branch authentication.
+Baseline rows were measured locally. All tuned split and authentication aggregates were
+reproduced exactly by the successful [GitHub Actions run](https://github.com/FLAMINGOFF/phishtriage/actions/runs/45526114397)
+at `9ddb82a996da2bfe540966db6559f9bf5455f47d` (Ubuntu 24.04, Python 3.12.16).
+The aggregate JSON records the remote metadata and canonical result hash.
 
 [New aggregate JSON](public-corpus-2026-11-25-detection-tuning.json) preserves baseline
 and tuned split results separately. The original `public-corpus-2026-11-25.json` is
@@ -385,8 +388,10 @@ example policy hashes match. The JSON records both code references and rules has
 Local gates passed: locked sync, Ruff lint/format, mypy, **628 tests passed** with
 96.89% coverage, and both evaluation commands. Three environment-dependent tests were
 skipped (two Compose integration tests and one PostgreSQL-only test); three live tests
-were deselected as designed. GitHub CI/Compose/PostgreSQL confirmation requires publishing the branch;
-no main push or merge is authorised for this work. Frank reviews the PR.
+were deselected as designed. The branch is published as [PR #12](https://github.com/FLAMINGOFF/phishtriage/pull/12);
+its Checks tab tracks the final commit's CI, including Compose and PostgreSQL.
+The public-corpus Actions run above passed with exactly matching aggregate results.
+No main push or merge is authorised for this work. Frank reviews the PR.
 
 ## Tuning
 

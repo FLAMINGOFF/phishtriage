@@ -257,7 +257,7 @@ and measured results are in [docs/evaluation.md](docs/evaluation.md).
 improved from 2/43 to 7/43 and false alarms fell from 23/1,355 to 6/1,355. On the
 later 2025 corpus, detection improved from 8/481 to 73/481; no contemporary ham was
 available to estimate its precision or FPR. Weights were selected only on dev, then
-frozen before held-out evaluation. These local historical measurements do not establish
+frozen before held-out evaluation. These historical measurements, reproduced by GitHub Actions, do not establish
 production accuracy. See [the dated report and aggregate results](docs/evaluation.md#detection-tuning--2026-11-25)
 for provenance, limitations, the separate authentication experiment and reproduction.
 
